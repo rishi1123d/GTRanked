@@ -1,2 +1,2 @@
 # GTRanked
-ranked people at GT
+ranked people at GT lol
