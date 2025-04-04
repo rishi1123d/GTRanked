@@ -2,68 +2,174 @@
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import type { ProfileType } from "@/lib/types"
-import { ChevronRight } from "lucide-react"
+import { ChevronRight, CheckCircle2, XCircle } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
 
 interface ProfileComparisonProps {
   leftProfile: ProfileType
   rightProfile: ProfileType
   onVote: (winnerId: string | null) => void
+  showResults?: boolean
+  onNextComparison?: () => void
 }
 
-export function ProfileComparison({ leftProfile, rightProfile, onVote }: ProfileComparisonProps) {
+export function ProfileComparison({ 
+  leftProfile, 
+  rightProfile, 
+  onVote,
+  showResults: externalShowResults = false,
+  onNextComparison
+}: ProfileComparisonProps) {
+  const [prediction, setPrediction] = useState<string | null>(null);
+  const [internalShowResults, setInternalShowResults] = useState(false);
+  const [countdown, setCountdown] = useState(5);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Combine external and internal show results
+  const showResults = externalShowResults || internalShowResults;
+  
+  useEffect(() => {
+    // Reset prediction when profiles change
+    if (!externalShowResults) {
+      setPrediction(null);
+      setInternalShowResults(false);
+      setCountdown(5);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    }
+  }, [leftProfile.id, rightProfile.id, externalShowResults]);
+  
+  // Start countdown when results are shown
+  useEffect(() => {
+    if (showResults && countdown > 0) {
+      timerRef.current = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) {
+            // When countdown reaches 0, clear interval and go to next comparison
+            if (timerRef.current) {
+              clearInterval(timerRef.current);
+              timerRef.current = null;
+            }
+            handleNextClick();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [showResults, countdown]);
+  
+  const handlePrediction = (profileId: string | null) => {
+    setPrediction(profileId);
+    setInternalShowResults(true);
+    setCountdown(5);
+    onVote(profileId);
+  };
+  
+  const isCorrectPrediction = () => {
+    if (prediction === null) return false; // Equal prediction
+    
+    if (leftProfile.elo === rightProfile.elo) {
+      // If ELO scores are equal, the "Equal" prediction was correct
+      return prediction === null;
+    }
+    
+    const higherEloProfile = leftProfile.elo > rightProfile.elo ? leftProfile.id : rightProfile.id;
+    return prediction === higherEloProfile;
+  };
+  
+  const handleNextClick = () => {
+    if (onNextComparison) {
+      onNextComparison();
+    } else {
+      // Fallback to internal state reset
+      setInternalShowResults(false);
+      setPrediction(null);
+      setCountdown(5);
+    }
+  };
+
   return (
     <div className="w-full flex flex-col md:flex-row gap-8 relative">
+      {/* Countdown Timer - Now at the top center */}
+      {showResults && (
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-12 z-10">
+          <div className="bg-white rounded-full shadow-md px-4 py-2">
+            <div className="text-sm font-medium text-gray-700 flex items-center">
+              <span>Next in </span>
+              <span className="inline-flex justify-center items-center bg-yellow-50 text-yellow-700 rounded-full w-7 h-7 font-bold mx-1">
+                {countdown}
+              </span>
+              <span>seconds</span>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Left Profile */}
       <div
-        className="flex-1 bg-white rounded-2xl p-8 shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100"
-        onClick={() => onVote(leftProfile.id)}
+        className={`flex-1 bg-white rounded-2xl p-8 shadow-sm hover:shadow-md transition-all duration-200 border cursor-pointer transform ${
+          showResults && prediction === leftProfile.id 
+            ? (isCorrectPrediction() 
+                ? "border-green-300 shadow-lg" 
+                : "border-red-300 shadow-lg")
+            : "border-gray-100 hover:border-yellow-300 hover:scale-105"
+        }`}
+        onClick={() => !showResults && handlePrediction(leftProfile.id)}
       >
-        <ProfileDisplay profile={leftProfile} />
-        <div className="mt-6 pt-6 border-t border-gray-100">
-          <Button
-            className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white rounded-xl h-12"
-            onClick={(e) => {
-              e.stopPropagation()
-              onVote(leftProfile.id)
-            }}
-          >
-            Vote for this profile
-          </Button>
-        </div>
+        {showResults && prediction === leftProfile.id && (
+          <div className="absolute top-4 right-4 z-10">
+            {isCorrectPrediction() ? (
+              <div className="bg-green-100 text-green-700 rounded-full px-3 py-1 text-sm font-medium flex items-center">
+                <CheckCircle2 className="w-4 h-4 mr-1" />
+                Correct!
+              </div>
+            ) : (
+              <div className="bg-red-100 text-red-700 rounded-full px-3 py-1 text-sm font-medium flex items-center">
+                <XCircle className="w-4 h-4 mr-1" />
+                Wrong
+              </div>
+            )}
+          </div>
+        )}
+        
+        <ProfileDisplay profile={leftProfile} showElo={showResults} />
+        
+        {!showResults && (
+          <div className="mt-6 pt-6 border-t border-gray-100">
+            <Button
+              className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white rounded-xl h-12"
+              onClick={(e) => {
+                e.stopPropagation()
+                handlePrediction(leftProfile.id)
+              }}
+            >
+              Vote for this profile
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Center Voting Controls */}
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 hidden md:flex flex-col items-center gap-4">
         <div className="bg-white rounded-full shadow-lg p-1">
           <Button
-            onClick={() => onVote(null)}
+            onClick={() => !showResults && handlePrediction(null)}
             variant="ghost"
             className="rounded-full h-16 w-16 font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+            disabled={showResults}
           >
             Equal
           </Button>
-        </div>
-
-        <div className="bg-white rounded-full p-1 shadow-md">
-          <div className="text-xs text-gray-500 text-center mb-1">or choose one</div>
-          <div className="flex gap-1">
-            <Button
-              onClick={() => onVote(leftProfile.id)}
-              variant="ghost"
-              size="sm"
-              className="rounded-full h-8 w-8 p-0 hover:bg-yellow-50"
-            >
-              <ChevronRight className="h-4 w-4 rotate-180" />
-            </Button>
-            <Button
-              onClick={() => onVote(rightProfile.id)}
-              variant="ghost"
-              size="sm"
-              className="rounded-full h-8 w-8 p-0 hover:bg-yellow-50"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
         </div>
       </div>
 
@@ -71,56 +177,64 @@ export function ProfileComparison({ leftProfile, rightProfile, onVote }: Profile
       <div className="flex md:hidden justify-center my-2">
         <div className="bg-white rounded-full shadow-lg p-4 flex gap-4 items-center">
           <Button
-            onClick={() => onVote(leftProfile.id)}
-            variant="ghost"
-            size="sm"
-            className="rounded-full h-10 w-10 p-0 hover:bg-yellow-50"
-          >
-            <ChevronRight className="h-5 w-5 rotate-180" />
-          </Button>
-
-          <Button
-            onClick={() => onVote(null)}
+            onClick={() => !showResults && handlePrediction(null)}
             variant="outline"
             className="rounded-full px-4 font-medium text-gray-600"
+            disabled={showResults}
           >
             Equal
-          </Button>
-
-          <Button
-            onClick={() => onVote(rightProfile.id)}
-            variant="ghost"
-            size="sm"
-            className="rounded-full h-10 w-10 p-0 hover:bg-yellow-50"
-          >
-            <ChevronRight className="h-5 w-5" />
           </Button>
         </div>
       </div>
 
       {/* Right Profile */}
       <div
-        className="flex-1 bg-white rounded-2xl p-8 shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100"
-        onClick={() => onVote(rightProfile.id)}
+        className={`flex-1 bg-white rounded-2xl p-8 shadow-sm hover:shadow-md transition-all duration-200 border cursor-pointer transform ${
+          showResults && prediction === rightProfile.id 
+            ? (isCorrectPrediction() 
+                ? "border-green-300 shadow-lg" 
+                : "border-red-300 shadow-lg")
+            : "border-gray-100 hover:border-yellow-300 hover:scale-105"
+        }`}
+        onClick={() => !showResults && handlePrediction(rightProfile.id)}
       >
-        <ProfileDisplay profile={rightProfile} />
-        <div className="mt-6 pt-6 border-t border-gray-100">
-          <Button
-            className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white rounded-xl h-12"
-            onClick={(e) => {
-              e.stopPropagation()
-              onVote(rightProfile.id)
-            }}
-          >
-            Vote for this profile
-          </Button>
-        </div>
+        {showResults && prediction === rightProfile.id && (
+          <div className="absolute top-4 right-4 z-10">
+            {isCorrectPrediction() ? (
+              <div className="bg-green-100 text-green-700 rounded-full px-3 py-1 text-sm font-medium flex items-center">
+                <CheckCircle2 className="w-4 h-4 mr-1" />
+                Correct!
+              </div>
+            ) : (
+              <div className="bg-red-100 text-red-700 rounded-full px-3 py-1 text-sm font-medium flex items-center">
+                <XCircle className="w-4 h-4 mr-1" />
+                Wrong
+              </div>
+            )}
+          </div>
+        )}
+        
+        <ProfileDisplay profile={rightProfile} showElo={showResults} />
+        
+        {!showResults && (
+          <div className="mt-6 pt-6 border-t border-gray-100">
+            <Button
+              className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white rounded-xl h-12"
+              onClick={(e) => {
+                e.stopPropagation()
+                handlePrediction(rightProfile.id)
+              }}
+            >
+              Vote for this profile
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
-function ProfileDisplay({ profile }: { profile: ProfileType }) {
+function ProfileDisplay({ profile, showElo = false }: { profile: ProfileType, showElo?: boolean }) {
   return (
     <div className="space-y-8">
       <div className="flex flex-col items-center">
@@ -130,6 +244,11 @@ function ProfileDisplay({ profile }: { profile: ProfileType }) {
         <div className="mt-4 text-center">
           <h3 className="text-xl font-semibold">{profile.name}</h3>
           <p className="text-gray-500">{profile.title}</p>
+          {showElo && (
+            <div className="mt-2 bg-yellow-50 text-yellow-800 text-sm font-medium px-3 py-1 rounded-full inline-block">
+              ELO: {profile.elo}
+            </div>
+          )}
         </div>
       </div>
 

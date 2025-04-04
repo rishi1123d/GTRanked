@@ -18,6 +18,7 @@ export default function VotePage() {
     }>
   >([])
   const [votesCount, setVotesCount] = useState(0)
+  const [isPredicting, setIsPredicting] = useState(false)
 
   // Get new random profiles that haven't been compared recently
   const getNewProfiles = () => {
@@ -33,10 +34,13 @@ export default function VotePage() {
     const shuffled = [...profilePool].sort(() => 0.5 - Math.random())
     setLeftProfile(shuffled[0])
     setRightProfile(shuffled[1])
+    setIsPredicting(false)
   }
 
   const handleVote = async (winnerId: string | null) => {
-    // Record the vote
+    setIsPredicting(true)
+    
+    // Record the vote after prediction is revealed
     setVotingHistory((prev) => [
       {
         winner: winnerId,
@@ -57,8 +61,9 @@ export default function VotePage() {
     //     body: JSON.stringify({ winnerId, loserId })
     //   });
     // }
-
-    // Get new profiles for comparison
+  }
+  
+  const handleNextComparison = () => {
     getNewProfiles()
   }
 
@@ -130,7 +135,13 @@ export default function VotePage() {
         </div>
 
         <div className="mb-12">
-          <ProfileComparison leftProfile={leftProfile} rightProfile={rightProfile} onVote={handleVote} />
+          <ProfileComparison 
+            leftProfile={leftProfile} 
+            rightProfile={rightProfile} 
+            onVote={handleVote} 
+            showResults={isPredicting}
+            onNextComparison={handleNextComparison}
+          />
         </div>
 
         {votingHistory.length > 0 && (
