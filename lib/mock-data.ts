@@ -1,0 +1,285 @@
+import type { ProfileType } from "./types"
+
+export const mockProfiles: ProfileType[] = [
+  {
+    id: "p1",
+    name: "Alex Johnson",
+    title: "Software Engineer",
+    company: "Google",
+    degree: "BS",
+    major: "Computer Science",
+    graduationYear: 2022,
+    isStudent: false,
+    elo: 1850,
+    skills: ["JavaScript", "React", "Node.js", "Machine Learning", "Python"],
+    experiences: [
+      {
+        title: "Software Engineer",
+        company: "Google",
+        duration: "2022 - Present",
+      },
+      {
+        title: "Software Engineering Intern",
+        company: "Microsoft",
+        duration: "Summer 2021",
+      },
+    ],
+    achievements: [
+      {
+        title: "Dean's List",
+        description: "Maintained a 4.0 GPA for 6 consecutive semesters",
+      },
+      {
+        title: "Hackathon Winner",
+        description: "1st place at GT Hackathon 2021",
+      },
+    ],
+  },
+  {
+    id: "p2",
+    name: "Samantha Lee",
+    title: "Product Manager",
+    company: "Amazon",
+    degree: "MS",
+    major: "Human-Computer Interaction",
+    graduationYear: 2020,
+    isStudent: false,
+    elo: 1780,
+    skills: ["Product Strategy", "UX Research", "Data Analysis", "Agile", "Prototyping"],
+    experiences: [
+      {
+        title: "Product Manager",
+        company: "Amazon",
+        duration: "2020 - Present",
+      },
+      {
+        title: "UX Researcher",
+        company: "Apple",
+        duration: "2018 - 2020",
+      },
+    ],
+    previousEducation: {
+      school: "University of Michigan",
+      degree: "BS",
+      major: "Information Science",
+      year: 2018,
+    },
+  },
+  {
+    id: "p3",
+    name: "David Kim",
+    title: "PhD Candidate",
+    company: "Georgia Tech Research Institute",
+    degree: "PhD",
+    major: "Electrical Engineering",
+    graduationYear: 2024,
+    isStudent: true,
+    elo: 1720,
+    skills: ["Machine Learning", "Signal Processing", "MATLAB", "Python", "Research"],
+    experiences: [
+      {
+        title: "Research Assistant",
+        company: "Georgia Tech Research Institute",
+        duration: "2021 - Present",
+      },
+      {
+        title: "Teaching Assistant",
+        company: "Georgia Tech",
+        duration: "2020 - 2021",
+      },
+    ],
+    achievements: [
+      {
+        title: "IEEE Paper Publication",
+        description: "Published research on advanced signal processing techniques",
+      },
+    ],
+  },
+  {
+    id: "p4",
+    name: "Emily Chen",
+    title: "Data Scientist",
+    company: "Netflix",
+    degree: "MS",
+    major: "Analytics",
+    graduationYear: 2021,
+    isStudent: false,
+    elo: 1790,
+    skills: ["Python", "R", "Machine Learning", "SQL", "Data Visualization"],
+    experiences: [
+      {
+        title: "Data Scientist",
+        company: "Netflix",
+        duration: "2021 - Present",
+      },
+      {
+        title: "Data Analyst",
+        company: "Twitter",
+        duration: "2019 - 2021",
+      },
+    ],
+  },
+  {
+    id: "p5",
+    name: "Michael Rodriguez",
+    title: "Senior Software Engineer",
+    company: "Meta",
+    degree: "BS",
+    major: "Computer Science",
+    graduationYear: 2018,
+    isStudent: false,
+    elo: 1830,
+    skills: ["React", "GraphQL", "TypeScript", "System Design", "Distributed Systems"],
+    experiences: [
+      {
+        title: "Senior Software Engineer",
+        company: "Meta",
+        duration: "2020 - Present",
+      },
+      {
+        title: "Software Engineer",
+        company: "Airbnb",
+        duration: "2018 - 2020",
+      },
+    ],
+    achievements: [
+      {
+        title: "Patent Holder",
+        description: "Co-inventor on 2 tech patents for distributed systems",
+      },
+    ],
+  },
+  {
+    id: "p6",
+    name: "Olivia Taylor",
+    title: "Undergraduate Researcher",
+    company: "Georgia Tech AI Lab",
+    degree: "BS",
+    major: "Computer Science",
+    graduationYear: 2025,
+    isStudent: true,
+    elo: 1650,
+    skills: ["Python", "TensorFlow", "Deep Learning", "Computer Vision", "Research"],
+    experiences: [
+      {
+        title: "Undergraduate Researcher",
+        company: "Georgia Tech AI Lab",
+        duration: "2023 - Present",
+      },
+      {
+        title: "Software Engineering Intern",
+        company: "Startup XYZ",
+        duration: "Summer 2023",
+      },
+    ],
+  },
+  {
+    id: "p7",
+    name: "James Wilson",
+    title: "Technical Program Manager",
+    company: "Microsoft",
+    degree: "MBA",
+    major: "Business Administration",
+    graduationYear: 2019,
+    isStudent: false,
+    elo: 1760,
+    skills: ["Project Management", "Agile", "Technical Leadership", "Strategy", "Product Development"],
+    experiences: [
+      {
+        title: "Technical Program Manager",
+        company: "Microsoft",
+        duration: "2019 - Present",
+      },
+      {
+        title: "Product Manager",
+        company: "Dell",
+        duration: "2017 - 2019",
+      },
+    ],
+    previousEducation: {
+      school: "Georgia Tech",
+      degree: "BS",
+      major: "Industrial Engineering",
+      year: 2015,
+    },
+  },
+  {
+    id: "p8",
+    name: "Sophia Martinez",
+    title: "Cybersecurity Analyst",
+    company: "Cisco",
+    degree: "MS",
+    major: "Cybersecurity",
+    graduationYear: 2022,
+    isStudent: false,
+    elo: 1740,
+    skills: ["Network Security", "Penetration Testing", "Threat Analysis", "Python", "Security Frameworks"],
+    experiences: [
+      {
+        title: "Cybersecurity Analyst",
+        company: "Cisco",
+        duration: "2022 - Present",
+      },
+      {
+        title: "Security Intern",
+        company: "IBM",
+        duration: "2021 - 2022",
+      },
+    ],
+  },
+  {
+    id: "p9",
+    name: "Ethan Brown",
+    title: "Robotics Engineer",
+    company: "Boston Dynamics",
+    degree: "PhD",
+    major: "Robotics",
+    graduationYear: 2021,
+    isStudent: false,
+    elo: 1810,
+    skills: ["ROS", "Computer Vision", "Control Systems", "C++", "Mechanical Design"],
+    experiences: [
+      {
+        title: "Robotics Engineer",
+        company: "Boston Dynamics",
+        duration: "2021 - Present",
+      },
+      {
+        title: "Research Assistant",
+        company: "Georgia Tech Robotics Lab",
+        duration: "2018 - 2021",
+      },
+    ],
+    achievements: [
+      {
+        title: "DARPA Challenge Finalist",
+        description: "Part of GT team that reached finals in robotics challenge",
+      },
+    ],
+  },
+  {
+    id: "p10",
+    name: "Ava Williams",
+    title: "UX Designer",
+    company: "Apple",
+    degree: "BS",
+    major: "Industrial Design",
+    graduationYear: 2020,
+    isStudent: false,
+    elo: 1730,
+    skills: ["UI/UX Design", "Figma", "User Research", "Prototyping", "Design Systems"],
+    experiences: [
+      {
+        title: "UX Designer",
+        company: "Apple",
+        duration: "2020 - Present",
+      },
+      {
+        title: "Design Intern",
+        company: "Google",
+        duration: "Summer 2019",
+      },
+    ],
+  },
+]
+
