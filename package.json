@@ -1,6 +1,7 @@
 {
-  "name": "gtranked",
+  "name": "gt-ranked",
   "version": "0.1.0",
+  "description": "A web application for ranking Georgia Tech students and alumni using the ELO rating system",
   "private": true,
   "scripts": {
     "dev": "next dev",

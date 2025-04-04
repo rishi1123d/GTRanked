@@ -910,6 +910,9 @@ video {
 .mt-6 {
   margin-top: 1.5rem;
 }
+.mt-8 {
+  margin-top: 2rem;
+}
 .mt-auto {
   margin-top: auto;
 }
@@ -1299,6 +1302,11 @@ video {
   --tw-space-x-reverse: 0;
   margin-right: calc(0.25rem * var(--tw-space-x-reverse));
   margin-left: calc(0.25rem * calc(1 - var(--tw-space-x-reverse)));
+}
+.space-x-2 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 0;
+  margin-right: calc(0.5rem * var(--tw-space-x-reverse));
+  margin-left: calc(0.5rem * calc(1 - var(--tw-space-x-reverse)));
 }
 .space-x-4 > :not([hidden]) ~ :not([hidden]) {
   --tw-space-x-reverse: 0;
@@ -1924,6 +1932,9 @@ video {
 }
 .pt-6 {
   padding-top: 1.5rem;
+}
+.pt-8 {
+  padding-top: 2rem;
 }
 .text-left {
   text-align: left;
