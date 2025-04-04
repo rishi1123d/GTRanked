@@ -5,11 +5,20 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Rocket, Trophy, Vote } from "lucide-react"
 import { ProfileComparison } from "@/components/profile-comparison"
-import { mockProfiles } from "@/lib/mock-data"
+import { useAviato } from "@/hooks/useAviato"
+import { AvitoPersonProfile } from "@/lib/types/aviato"
+import { toast } from "sonner"
 
 export default function ProfileVotePage() {
-  const [leftProfile, setLeftProfile] = useState(mockProfiles[0])
-  const [rightProfile, setRightProfile] = useState(mockProfiles[1])
+  const {
+    getProfilesForComparison,
+    submitVote,
+    loading,
+    error
+  } = useAviato({ initialLoading: true })
+
+  const [leftProfile, setLeftProfile] = useState<AvitoPersonProfile | null>(null)
+  const [rightProfile, setRightProfile] = useState<AvitoPersonProfile | null>(null)
   const [votingHistory, setVotingHistory] = useState<
     Array<{
       winner: string | null
@@ -18,54 +27,73 @@ export default function ProfileVotePage() {
     }>
   >([])
   const [votesCount, setVotesCount] = useState(0)
+  const [compareLoading, setCompareLoading] = useState(true)
 
   // Get new random profiles that haven't been compared recently
-  const getNewProfiles = () => {
-    // Filter out profiles that were in the last 3 comparisons
-    const recentProfileIds = votingHistory.slice(0, 3).flatMap((vote) => vote.profiles)
-
-    const availableProfiles = mockProfiles.filter((p) => !recentProfileIds.includes(p.id))
-
-    // If we have less than 2 available profiles, just use all profiles
-    const profilePool = availableProfiles.length >= 2 ? availableProfiles : mockProfiles
-
-    // Get two random profiles
-    const shuffled = [...profilePool].sort(() => 0.5 - Math.random())
-    setLeftProfile(shuffled[0])
-    setRightProfile(shuffled[1])
+  const getNewProfiles = async () => {
+    try {
+      setCompareLoading(true)
+      
+      // Get recent profile IDs to exclude from the comparison
+      const recentProfileIds = votingHistory.slice(0, 3).flatMap((vote) => vote.profiles)
+      
+      // Get new profiles for comparison
+      const [newLeftProfile, newRightProfile] = await getProfilesForComparison(recentProfileIds)
+      
+      setLeftProfile(newLeftProfile)
+      setRightProfile(newRightProfile)
+    } catch (err) {
+      console.error("Error getting profiles for comparison:", err)
+      toast.error("Failed to load profiles for comparison. Please try again.")
+    } finally {
+      setCompareLoading(false)
+    }
   }
 
   const handleVote = async (winnerId: string | null) => {
-    // Record the vote
-    setVotingHistory((prev) => [
-      {
-        winner: winnerId,
-        profiles: [leftProfile.id, rightProfile.id],
-        timestamp: new Date(),
-      },
-      ...prev,
-    ])
+    if (!leftProfile || !rightProfile) return
+    
+    try {
+      // Record the vote in history
+      setVotingHistory((prev) => [
+        {
+          winner: winnerId,
+          profiles: [leftProfile.id, rightProfile.id],
+          timestamp: new Date(),
+        },
+        ...prev,
+      ])
 
-    setVotesCount((prev) => prev + 1)
+      setVotesCount((prev) => prev + 1)
 
-    // In a real app, we would call the API to update ELO ratings
-    // if (winnerId !== null) {
-    //   const loserId = winnerId === leftProfile.id ? rightProfile.id : leftProfile.id;
-    //   await fetch('/api/vote', {
-    //     method: 'POST',
-    //     headers: { 'Content-Type': 'application/json' },
-    //     body: JSON.stringify({ winnerId, loserId })
-    //   });
-    // }
+      // Submit vote to API
+      if (winnerId !== null) {
+        const loserId = winnerId === leftProfile.id ? rightProfile.id : leftProfile.id
+        await submitVote(winnerId, loserId)
+      } else {
+        // Handle draw (equal vote)
+        await submitVote(null, leftProfile.id === rightProfile.id ? leftProfile.id : rightProfile.id)
+      }
 
-    // Get new profiles for comparison
-    getNewProfiles()
+      // Get new profiles for comparison
+      getNewProfiles()
+    } catch (err) {
+      console.error("Error submitting vote:", err)
+      toast.error("Failed to submit your vote. Please try again.")
+    }
   }
 
   // Get initial profiles on first render
   useEffect(() => {
     getNewProfiles()
   }, [])
+
+  // Show error if API request fails
+  useEffect(() => {
+    if (error) {
+      toast.error(`Error: ${error.message}`)
+    }
+  }, [error])
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
@@ -130,7 +158,15 @@ export default function ProfileVotePage() {
         </div>
 
         <div className="mb-12">
-          <ProfileComparison leftProfile={leftProfile} rightProfile={rightProfile} onVote={handleVote} />
+          {compareLoading ? (
+            <div className="flex justify-center items-center py-20">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-600"></div>
+            </div>
+          ) : (
+            leftProfile && rightProfile && (
+              <ProfileComparison leftProfile={leftProfile} rightProfile={rightProfile} onVote={handleVote} />
+            )
+          )}
         </div>
 
         {votingHistory.length > 0 && (
@@ -144,18 +180,25 @@ export default function ProfileVotePage() {
               <div className="divide-y divide-gray-100">
                 {votingHistory.slice(0, 5).map((vote, index) => {
                   const [leftId, rightId] = vote.profiles
-                  const leftProfileData = mockProfiles.find((p) => p.id === leftId)
-                  const rightProfileData = mockProfiles.find((p) => p.id === rightId)
-                  const winnerProfile = vote.winner ? mockProfiles.find((p) => p.id === vote.winner) : null
+                  
+                  // Find profiles that match the IDs in the voting history
+                  const leftProfileData = leftId === leftProfile?.id ? leftProfile : 
+                                           leftId === rightProfile?.id ? rightProfile : null
+                  const rightProfileData = rightId === leftProfile?.id ? leftProfile : 
+                                           rightId === rightProfile?.id ? rightProfile : null
+                  
+                  // Determine the winner profile
+                  const winnerProfile = vote.winner ? 
+                    (vote.winner === leftId ? leftProfileData : rightProfileData) : null
 
                   return (
                     <div key={index} className="p-4 hover:bg-gray-50 transition-colors">
                       <div className="flex items-center gap-4">
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-medium">{leftProfileData?.name}</span>
+                            <span className="font-medium">{leftProfileData?.name || "Unknown Profile"}</span>
                             <span className="text-gray-400">vs</span>
-                            <span className="font-medium">{rightProfileData?.name}</span>
+                            <span className="font-medium">{rightProfileData?.name || "Unknown Profile"}</span>
                           </div>
                           <p className="text-sm text-gray-500">
                             {winnerProfile ? `You voted for ${winnerProfile.name}` : "You voted Equal"}

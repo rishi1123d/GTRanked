@@ -2,15 +2,21 @@
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import type { ProfileType } from "@/lib/types"
+import { AvitoPersonProfile } from "@/lib/types/aviato"
+import { adaptAvitoProfile } from "@/lib/adapters/profile-adapter"
 import { ChevronRight } from "lucide-react"
 
 interface ProfileComparisonProps {
-  leftProfile: ProfileType
-  rightProfile: ProfileType
+  leftProfile: AvitoPersonProfile
+  rightProfile: AvitoPersonProfile
   onVote: (winnerId: string | null) => void
 }
 
 export function ProfileComparison({ leftProfile, rightProfile, onVote }: ProfileComparisonProps) {
+  // Convert Aviato profiles to ProfileType
+  const adaptedLeftProfile = adaptAvitoProfile(leftProfile)
+  const adaptedRightProfile = adaptAvitoProfile(rightProfile)
+  
   return (
     <div className="w-full flex flex-col md:flex-row gap-8 relative">
       {/* Left Profile */}
@@ -18,7 +24,7 @@ export function ProfileComparison({ leftProfile, rightProfile, onVote }: Profile
         className="flex-1 bg-white rounded-2xl p-8 shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100"
         onClick={() => onVote(leftProfile.id)}
       >
-        <ProfileDisplay profile={leftProfile} />
+        <ProfileDisplay profile={adaptedLeftProfile} />
         <div className="mt-6 pt-6 border-t border-gray-100">
           <Button
             className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white rounded-xl h-12"
@@ -103,7 +109,7 @@ export function ProfileComparison({ leftProfile, rightProfile, onVote }: Profile
         className="flex-1 bg-white rounded-2xl p-8 shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100"
         onClick={() => onVote(rightProfile.id)}
       >
-        <ProfileDisplay profile={rightProfile} />
+        <ProfileDisplay profile={adaptedRightProfile} />
         <div className="mt-6 pt-6 border-t border-gray-100">
           <Button
             className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white rounded-xl h-12"
@@ -269,4 +275,3 @@ function CompanyLogo({ company }: { company: string }) {
     </div>
   )
 }
-
