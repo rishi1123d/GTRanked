@@ -75,7 +75,7 @@ export default function VotePage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <header className="sticky top-0 z-50 backdrop-blur-md bg-white/80 border-b">
-        <div className="container flex items-center justify-between h-16 px-4 md:px-6">
+        <div className="container flex items-center justify-between h-16 px-4 md:px-6 max-w-full">
           <Link href="/" className="flex items-center gap-2">
             <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-yellow-600 to-yellow-800">
               GT Ranked
@@ -105,8 +105,8 @@ export default function VotePage() {
         </div>
       </header>
 
-      <div className="container py-8 px-4 md:px-6">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8">
+      <div className="container py-8 px-4 md:px-6 max-w-full w-full">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8 max-w-[1920px] mx-auto">
           <div>
             <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-yellow-600 to-yellow-800 mb-2">
               Who has the stronger profile?
@@ -124,7 +124,7 @@ export default function VotePage() {
           </div>
         </div>
 
-        <div className="flex justify-center mb-8">
+        <div className="flex justify-center mb-8 max-w-[1920px] mx-auto">
           <div className="bg-white/90 backdrop-blur-sm rounded-full py-2 px-4 text-sm text-gray-600 flex items-center gap-2 shadow-sm">
             <Rocket className="h-4 w-4 text-yellow-600" />
             <span>Data powered by Aviato</span>
@@ -134,7 +134,7 @@ export default function VotePage() {
           </div>
         </div>
 
-        <div className="mb-12">
+        <div className="mb-12 max-w-[1920px] mx-auto">
           <ProfileComparison 
             leftProfile={leftProfile} 
             rightProfile={rightProfile} 
@@ -145,7 +145,7 @@ export default function VotePage() {
         </div>
 
         {votingHistory.length > 0 && (
-          <div className="max-w-3xl mx-auto">
+          <div className="max-w-[1920px] mx-auto">
             <div className="flex items-center gap-2 mb-4">
               <Trophy className="h-5 w-5 text-yellow-600" />
               <h2 className="text-xl font-bold">Your Recent Votes</h2>
@@ -198,8 +198,8 @@ export default function VotePage() {
       </div>
 
       <footer className="mt-auto border-t py-8">
-        <div className="container px-4 md:px-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="container px-4 md:px-6 max-w-full">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 max-w-[1920px] mx-auto">
             <div className="flex flex-col items-center md:items-start">
               <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-yellow-600 to-yellow-800 mb-1">
                 GT Ranked

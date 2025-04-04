@@ -45,7 +45,7 @@ export default function LeaderboardPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <header className="sticky top-0 z-50 backdrop-blur-md bg-white/80 border-b">
-        <div className="container flex items-center justify-between h-16 px-4 md:px-6">
+        <div className="container flex items-center justify-between h-16 px-4 md:px-6 max-w-full">
           <Link href="/" className="flex items-center gap-2">
             <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-yellow-600 to-yellow-800">
               GT Ranked
@@ -75,8 +75,8 @@ export default function LeaderboardPage() {
         </div>
       </header>
 
-      <div className="container py-8 px-4 md:px-6">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8">
+      <div className="container py-8 px-4 md:px-6 max-w-full w-full">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8 max-w-[1920px] mx-auto">
           <div>
             <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-yellow-600 to-yellow-800 mb-2">
               GT Ranked Leaderboard
@@ -121,92 +121,94 @@ export default function LeaderboardPage() {
           </div>
         </div>
 
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              type="search"
-              placeholder="Search by name, title, or company..."
-              className="pl-10 bg-white rounded-full border-gray-200 h-12"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-          <Select value={filterBy} onValueChange={setFilterBy}>
-            <SelectTrigger className="w-full md:w-[180px] bg-white rounded-full border-gray-200 h-12">
-              <SelectValue placeholder="Filter by" />
-            </SelectTrigger>
-            <SelectContent className="rounded-xl">
-              <SelectItem value="all">All Profiles</SelectItem>
-              <SelectItem value="students">Current Students</SelectItem>
-              <SelectItem value="alumni">Alumni</SelectItem>
-              <SelectItem value="cs">Computer Science</SelectItem>
-              <SelectItem value="engineering">Engineering</SelectItem>
-              <SelectItem value="business">Business</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-full md:w-[180px] bg-white rounded-full border-gray-200 h-12">
-              <SelectValue placeholder="Sort by" />
-            </SelectTrigger>
-            <SelectContent className="rounded-xl">
-              <SelectItem value="elo">Highest ELO</SelectItem>
-              <SelectItem value="name">Name (A-Z)</SelectItem>
-              <SelectItem value="graduation">Graduation Year</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="grid grid-cols-12 gap-4 p-4 font-medium text-sm text-gray-500 border-b">
-            <div className="col-span-1 flex items-center">Rank</div>
-            <div className="col-span-5 md:col-span-3 flex items-center">Name</div>
-            <div className="hidden md:flex md:col-span-3 items-center">Education/Position</div>
-            <div className="hidden md:flex md:col-span-3 items-center">Experience</div>
-            <div className="col-span-6 md:col-span-2 flex items-center justify-end">
-              <Button variant="ghost" size="sm" className="h-8 gap-1 rounded-full">
-                ELO <ArrowUpDown className="h-3 w-3" />
-              </Button>
+        <div className="max-w-[1920px] mx-auto">
+          <div className="flex flex-col md:flex-row gap-4 mb-6">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                type="search"
+                placeholder="Search by name, title, or company..."
+                className="pl-10 bg-white rounded-full border-gray-200 h-12"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
+            <Select value={filterBy} onValueChange={setFilterBy}>
+              <SelectTrigger className="w-full md:w-[180px] bg-white rounded-full border-gray-200 h-12">
+                <SelectValue placeholder="Filter by" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl">
+                <SelectItem value="all">All Profiles</SelectItem>
+                <SelectItem value="students">Current Students</SelectItem>
+                <SelectItem value="alumni">Alumni</SelectItem>
+                <SelectItem value="cs">Computer Science</SelectItem>
+                <SelectItem value="engineering">Engineering</SelectItem>
+                <SelectItem value="business">Business</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-full md:w-[180px] bg-white rounded-full border-gray-200 h-12">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl">
+                <SelectItem value="elo">Highest ELO</SelectItem>
+                <SelectItem value="name">Name (A-Z)</SelectItem>
+                <SelectItem value="graduation">Graduation Year</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
-          {sortedProfiles.map((profile, index) => (
-            <div
-              key={profile.id}
-              className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-gray-50 transition-colors border-b last:border-0"
-            >
-              <div className="col-span-1 font-semibold text-gray-500">{index + 1}</div>
-              <div className="col-span-5 md:col-span-3 flex items-center gap-3">
-                <Avatar className="bg-gradient-to-br from-indigo-400 to-purple-500">
-                  <AvatarFallback className="text-white font-light">{profile.name.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="font-medium">{profile.name}</p>
-                  <p className="text-xs text-gray-500">{profile.graduationYear}</p>
-                </div>
-              </div>
-              <div className="hidden md:block md:col-span-3">
-                <p className="font-medium">{profile.major}</p>
-                <p className="text-sm text-gray-500">{profile.isStudent ? "Student" : "Alumni"}</p>
-              </div>
-              <div className="hidden md:block md:col-span-3">
-                <p className="font-medium">{profile.title}</p>
-                <p className="text-sm text-gray-500">{profile.company}</p>
-              </div>
-              <div className="col-span-6 md:col-span-2 text-right">
-                <p className="font-bold text-yellow-600">{profile.elo}</p>
-                <Button variant="ghost" size="sm" className="h-6 text-xs rounded-full">
-                  View Profile <ExternalLink className="ml-1 h-3 w-3" />
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="grid grid-cols-12 gap-4 p-4 font-medium text-sm text-gray-500 border-b">
+              <div className="col-span-1 flex items-center">Rank</div>
+              <div className="col-span-5 md:col-span-3 lg:col-span-2 flex items-center">Name</div>
+              <div className="hidden md:flex md:col-span-3 lg:col-span-4 items-center">Education/Position</div>
+              <div className="hidden md:flex md:col-span-3 lg:col-span-3 items-center">Experience</div>
+              <div className="col-span-6 md:col-span-2 lg:col-span-2 flex items-center justify-end">
+                <Button variant="ghost" size="sm" className="h-8 gap-1 rounded-full">
+                  ELO <ArrowUpDown className="h-3 w-3" />
                 </Button>
               </div>
             </div>
-          ))}
+
+            {sortedProfiles.map((profile, index) => (
+              <div
+                key={profile.id}
+                className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-gray-50 transition-colors border-b last:border-0"
+              >
+                <div className="col-span-1 font-semibold text-gray-500">{index + 1}</div>
+                <div className="col-span-5 md:col-span-3 lg:col-span-2 flex items-center gap-3">
+                  <Avatar className="bg-gradient-to-br from-indigo-400 to-purple-500">
+                    <AvatarFallback className="text-white font-light">{profile.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-medium">{profile.name}</p>
+                    <p className="text-xs text-gray-500">{profile.graduationYear}</p>
+                  </div>
+                </div>
+                <div className="hidden md:block md:col-span-3 lg:col-span-4">
+                  <p className="font-medium">{profile.major}</p>
+                  <p className="text-sm text-gray-500">{profile.isStudent ? "Student" : "Alumni"}</p>
+                </div>
+                <div className="hidden md:block md:col-span-3 lg:col-span-3">
+                  <p className="font-medium">{profile.title}</p>
+                  <p className="text-sm text-gray-500">{profile.company}</p>
+                </div>
+                <div className="col-span-6 md:col-span-2 lg:col-span-2 text-right">
+                  <p className="font-bold text-yellow-600">{profile.elo}</p>
+                  <Button variant="ghost" size="sm" className="h-6 text-xs rounded-full">
+                    View Profile <ExternalLink className="ml-1 h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
       <footer className="mt-auto border-t py-8 bg-white">
-        <div className="container px-4 md:px-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="container px-4 md:px-6 max-w-full">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 max-w-[1920px] mx-auto">
             <div className="flex flex-col items-center md:items-start">
               <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-yellow-600 to-yellow-800 mb-1">
                 GT Ranked
