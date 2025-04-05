@@ -1,76 +1,185 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Rocket, Trophy, Vote } from "lucide-react"
-import { ProfileComparison } from "@/components/profile-comparison"
-import { mockProfiles } from "@/lib/mock-data"
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Rocket, Trophy, Vote } from "lucide-react";
+import { ProfileComparison } from "@/components/profile-comparison";
+import { v4 as uuidv4 } from "uuid";
+
+// Define types
+interface ProfileType {
+  id: string;
+  name: string;
+  title: string;
+  company: string;
+  degree: string;
+  major: string;
+  graduationYear: number;
+  isStudent: boolean;
+  elo: number;
+  skills: string[];
+  experiences: {
+    title: string;
+    company: string;
+    duration: string;
+  }[];
+  achievements?: {
+    title: string;
+    description?: string;
+  }[];
+}
+
+interface VoteHistoryItem {
+  winner_id: string | null;
+  left_profile_id: string;
+  right_profile_id: string;
+  created_at: string;
+  left_profile_name: string;
+  right_profile_name: string;
+  winner_name: string | null;
+}
+
+// Generate a session ID for the user if they don't have one
+const getOrCreateSessionId = (): string => {
+  if (typeof window !== "undefined") {
+    let sessionId = localStorage.getItem("voter_session_id");
+    if (!sessionId) {
+      sessionId = uuidv4();
+      localStorage.setItem("voter_session_id", sessionId);
+    }
+    return sessionId;
+  }
+  return "";
+};
 
 export default function VotePage() {
-  const [leftProfile, setLeftProfile] = useState(mockProfiles[0])
-  const [rightProfile, setRightProfile] = useState(mockProfiles[1])
-  const [votingHistory, setVotingHistory] = useState<
-    Array<{
-      winner: string | null
-      profiles: [string, string]
-      timestamp: Date
-    }>
-  >([])
-  const [votesCount, setVotesCount] = useState(0)
-  const [isPredicting, setIsPredicting] = useState(false)
+  const [leftProfile, setLeftProfile] = useState<ProfileType | null>(null);
+  const [rightProfile, setRightProfile] = useState<ProfileType | null>(null);
+  const [votingHistory, setVotingHistory] = useState<VoteHistoryItem[]>([]);
+  const [votesCount, setVotesCount] = useState(0);
+  const [isPredicting, setIsPredicting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [sessionId, setSessionId] = useState("");
 
-  // Get new random profiles that haven't been compared recently
-  const getNewProfiles = () => {
-    // Filter out profiles that were in the last 3 comparisons
-    const recentProfileIds = votingHistory.slice(0, 3).flatMap((vote) => vote.profiles)
+  // Get recent votes from the API
+  const fetchRecentVotes = async (sessionId: string) => {
+    try {
+      const response = await fetch(`/api/votes?sessionId=${sessionId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setVotingHistory(data.votes || []);
+        setVotesCount(data.votes?.length || 0);
+      }
+    } catch (error) {
+      console.error("Error fetching votes:", error);
+    }
+  };
 
-    const availableProfiles = mockProfiles.filter((p) => !recentProfileIds.includes(p.id))
+  // Get new random profiles from the API
+  const getNewProfiles = async () => {
+    try {
+      setIsLoading(true);
 
-    // If we have less than 2 available profiles, just use all profiles
-    const profilePool = availableProfiles.length >= 2 ? availableProfiles : mockProfiles
+      // Get excluded IDs from recent votes
+      const recentProfileIds = votingHistory
+        .slice(0, 3)
+        .flatMap((vote) => [vote.left_profile_id, vote.right_profile_id]);
 
-    // Get two random profiles
-    const shuffled = [...profilePool].sort(() => 0.5 - Math.random())
-    setLeftProfile(shuffled[0])
-    setRightProfile(shuffled[1])
-    setIsPredicting(false)
-  }
+      // Get new profiles from API
+      const response = await fetch(
+        `/api/profiles/random?exclude=${recentProfileIds.join(",")}`
+      );
+      if (response.ok) {
+        const { profiles } = await response.json();
+        if (profiles && profiles.length >= 2) {
+          setLeftProfile(profiles[0]);
+          setRightProfile(profiles[1]);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching profiles:", error);
+    } finally {
+      setIsLoading(false);
+      setIsPredicting(false);
+    }
+  };
 
   const handleVote = async (winnerId: string | null) => {
-    setIsPredicting(true)
-    
-    // Record the vote after prediction is revealed
-    setVotingHistory((prev) => [
-      {
-        winner: winnerId,
-        profiles: [leftProfile.id, rightProfile.id],
-        timestamp: new Date(),
-      },
-      ...prev,
-    ])
+    if (!leftProfile || !rightProfile || !sessionId) return;
 
-    setVotesCount((prev) => prev + 1)
+    setIsPredicting(true);
 
-    // In a real app, we would call the API to update ELO ratings
-    // if (winnerId !== null) {
-    //   const loserId = winnerId === leftProfile.id ? rightProfile.id : leftProfile.id;
-    //   await fetch('/api/vote', {
-    //     method: 'POST',
-    //     headers: { 'Content-Type': 'application/json' },
-    //     body: JSON.stringify({ winnerId, loserId })
-    //   });
-    // }
-  }
-  
+    try {
+      // Send vote to the API
+      const loserId =
+        winnerId === leftProfile.id ? rightProfile.id : leftProfile.id;
+
+      const response = await fetch("/api/vote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          winnerId: winnerId, // Can be null for a tie
+          loserId: loserId,
+          sessionId: sessionId,
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+
+        // Update voting history with the new vote
+        setVotingHistory((prev) => [
+          {
+            winner_id: winnerId,
+            left_profile_id: leftProfile.id,
+            right_profile_id: rightProfile.id,
+            created_at: new Date().toISOString(),
+            // Add names for display purposes
+            left_profile_name: leftProfile.name,
+            right_profile_name: rightProfile.name,
+            winner_name: winnerId
+              ? winnerId === leftProfile.id
+                ? leftProfile.name
+                : rightProfile.name
+              : null,
+          },
+          ...prev,
+        ]);
+
+        setVotesCount((prev) => prev + 1);
+      }
+    } catch (error) {
+      console.error("Error submitting vote:", error);
+    }
+  };
+
   const handleNextComparison = () => {
-    getNewProfiles()
-  }
+    getNewProfiles();
+  };
 
-  // Get initial profiles on first render
+  // Initialize on first render
   useEffect(() => {
-    getNewProfiles()
-  }, [])
+    const sid = getOrCreateSessionId();
+    setSessionId(sid);
+
+    if (sid) {
+      fetchRecentVotes(sid);
+      getNewProfiles();
+    }
+  }, []);
+
+  // If we're still loading, show a loading state
+  if (isLoading || !leftProfile || !rightProfile) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin h-10 w-10 border-4 border-yellow-500 rounded-full border-t-transparent mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading profiles...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
@@ -112,8 +221,8 @@ export default function VotePage() {
               Who has the stronger profile?
             </h1>
             <p className="text-gray-600 max-w-xl">
-              Vote for the profile you think is stronger. Your votes help determine the ELO rankings of GT students and
-              alumni.
+              Vote for the profile you think is stronger. Your votes help
+              determine the ELO rankings of GT students and alumni.
             </p>
           </div>
 
@@ -128,17 +237,20 @@ export default function VotePage() {
           <div className="bg-white/90 backdrop-blur-sm rounded-full py-2 px-4 text-sm text-gray-600 flex items-center gap-2 shadow-sm">
             <Rocket className="h-4 w-4 text-yellow-600" />
             <span>Data powered by Aviato</span>
-            <Link href="#" className="text-yellow-600 ml-1 flex items-center hover:underline">
+            <Link
+              href="#"
+              className="text-yellow-600 ml-1 flex items-center hover:underline"
+            >
               Learn more here →
             </Link>
           </div>
         </div>
 
         <div className="mb-12 max-w-[1920px] mx-auto">
-          <ProfileComparison 
-            leftProfile={leftProfile} 
-            rightProfile={rightProfile} 
-            onVote={handleVote} 
+          <ProfileComparison
+            leftProfile={leftProfile}
+            rightProfile={rightProfile}
+            onVote={handleVote}
             showResults={isPredicting}
             onNextComparison={handleNextComparison}
           />
@@ -153,36 +265,38 @@ export default function VotePage() {
 
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="divide-y divide-gray-100">
-                {votingHistory.slice(0, 5).map((vote, index) => {
-                  const [leftId, rightId] = vote.profiles
-                  const leftProfileData = mockProfiles.find((p) => p.id === leftId)
-                  const rightProfileData = mockProfiles.find((p) => p.id === rightId)
-                  const winnerProfile = vote.winner ? mockProfiles.find((p) => p.id === vote.winner) : null
-
-                  return (
-                    <div key={index} className="p-4 hover:bg-gray-50 transition-colors">
-                      <div className="flex items-center gap-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">{leftProfileData?.name}</span>
-                            <span className="text-gray-400">vs</span>
-                            <span className="font-medium">{rightProfileData?.name}</span>
-                          </div>
-                          <p className="text-sm text-gray-500">
-                            {winnerProfile ? `You voted for ${winnerProfile.name}` : "You voted Equal"}
-                          </p>
+                {votingHistory.slice(0, 5).map((vote, index) => (
+                  <div
+                    key={index}
+                    className="p-4 hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">
+                            {vote.left_profile_name}
+                          </span>
+                          <span className="text-gray-400">vs</span>
+                          <span className="font-medium">
+                            {vote.right_profile_name}
+                          </span>
                         </div>
-                        <div className="text-xs text-gray-500">
-                          {new Intl.DateTimeFormat("en-US", {
-                            hour: "numeric",
-                            minute: "numeric",
-                            hour12: true,
-                          }).format(vote.timestamp)}
-                        </div>
+                        <p className="text-sm text-gray-500">
+                          {vote.winner_id
+                            ? `You voted for ${vote.winner_name}`
+                            : "You voted Equal"}
+                        </p>
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {new Intl.DateTimeFormat("en-US", {
+                          hour: "numeric",
+                          minute: "numeric",
+                          hour12: true,
+                        }).format(new Date(vote.created_at))}
                       </div>
                     </div>
-                  )
-                })}
+                  </div>
+                ))}
               </div>
 
               {votingHistory.length > 5 && (
@@ -204,28 +318,39 @@ export default function VotePage() {
               <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-yellow-600 to-yellow-800 mb-1">
                 GT Ranked
               </span>
-              <p className="text-sm text-gray-500">Ranking Georgia Tech's network using the ELO system</p>
+              <p className="text-sm text-gray-500">
+                Ranking Georgia Tech's network using the ELO system
+              </p>
             </div>
 
             <div className="flex gap-6">
-              <Link href="/" className="text-sm text-gray-500 hover:text-yellow-600">
+              <Link
+                href="/"
+                className="text-sm text-gray-500 hover:text-yellow-600"
+              >
                 Home
               </Link>
-              <Link href="/vote" className="text-sm text-gray-500 hover:text-yellow-600">
+              <Link
+                href="/vote"
+                className="text-sm text-gray-500 hover:text-yellow-600"
+              >
                 Vote
               </Link>
-              <Link href="/leaderboard" className="text-sm text-gray-500 hover:text-yellow-600">
+              <Link
+                href="/leaderboard"
+                className="text-sm text-gray-500 hover:text-yellow-600"
+              >
                 Leaderboard
               </Link>
             </div>
 
             <p className="text-xs text-gray-400">
-              &copy; {new Date().getFullYear()} GT Ranked. Data powered by Aviato API
+              &copy; {new Date().getFullYear()} GT Ranked. Data powered by
+              Aviato API
             </p>
           </div>
         </div>
       </footer>
     </div>
-  )
+  );
 }
-
