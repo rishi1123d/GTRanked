@@ -1,6 +1,6 @@
-import { supabase } from './supabase';
-import dotenv from 'dotenv';
-import fetch from 'node-fetch';
+const { supabase } = require('./supabase');
+const dotenv = require('dotenv');
+const fetch = require('node-fetch');
 
 // Load environment variables
 dotenv.config();
@@ -11,7 +11,14 @@ const AVIATO_API_BASE_URL = 'https://api.data.aviato.co/v1';
 
 // Aviato API client
 const aviato = {
-  async search(body: any) {
+  async search(body) {
+    if (!AVIATO_API_KEY) {
+      throw new Error('AVIATO_API_KEY not found in environment variables');
+    }
+    
+    console.log('Making API request to Aviato...');
+    console.log(JSON.stringify(body, null, 2));
+    
     const response = await fetch(`${AVIATO_API_BASE_URL}/person/search`, {
       method: 'POST',
       headers: {
@@ -31,7 +38,7 @@ const aviato = {
 };
 
 // Extract URLs from social links
-function extractUrls(urls: any) {
+function extractUrls(urls) {
   if (!urls) return { linkedinUrl: null, twitterUrl: null, githubUrl: null };
   
   const linkedinUrl = urls.linkedin?.[0] || null;
@@ -42,7 +49,7 @@ function extractUrls(urls: any) {
 }
 
 // Main function to fetch GT profiles and populate Supabase
-export async function fetchAndStoreGTProfiles(limit = 500) {
+async function fetchAndStoreGTProfiles(limit = 5) {
   console.log(`Starting to fetch up to ${limit} Georgia Tech profiles...`);
 
   // DSL query to find GT students and alumni
@@ -84,7 +91,7 @@ export async function fetchAndStoreGTProfiles(limit = 500) {
       const { linkedinUrl, twitterUrl, githubUrl } = extractUrls(profile.URLs);
 
       // Find education at Georgia Tech
-      const gtEducation = profile.educationList?.find((edu: any) => 
+      const gtEducation = profile.educationList?.find((edu) => 
         edu.school?.fullName?.includes('Georgia Tech') || 
         edu.school?.fullName?.includes('Georgia Institute of Technology')
       );
@@ -97,10 +104,12 @@ export async function fetchAndStoreGTProfiles(limit = 500) {
       const isStudent = gtEducation && (!gtEducation.endDate || new Date(gtEducation.endDate) > new Date());
       
       // Get current work experience if any
-      const currentExperience = profile.experienceList?.find((exp: any) => exp.endDate === null);
+      const currentExperience = profile.experienceList?.find((exp) => exp.endDate === null);
       const title = currentExperience?.positionList?.[0]?.title || '';
       const company = currentExperience?.company?.name || '';
 
+      console.log(`Processing profile: ${profile.fullName}`);
+      
       // Insert profile into Supabase
       const { data: insertedProfile, error: profileError } = await supabase
         .from('profiles')
@@ -135,8 +144,11 @@ export async function fetchAndStoreGTProfiles(limit = 500) {
         continue;
       }
 
+      console.log(`Inserted profile ${profile.fullName} with ID ${profileId}`);
+
       // Insert education data
       if (profile.educationList && profile.educationList.length > 0) {
+        console.log(`Processing ${profile.educationList.length} education entries`);
         for (const edu of profile.educationList) {
           const { error: eduError } = await supabase
             .from('education')
@@ -158,6 +170,7 @@ export async function fetchAndStoreGTProfiles(limit = 500) {
 
       // Insert work experience data
       if (profile.experienceList && profile.experienceList.length > 0) {
+        console.log(`Processing ${profile.experienceList.length} work experience entries`);
         for (const exp of profile.experienceList) {
           const position = exp.positionList?.[0]?.title || '';
           const { error: expError } = await supabase
@@ -187,15 +200,4 @@ export async function fetchAndStoreGTProfiles(limit = 500) {
   }
 }
 
-// Only run if this file is executed directly
-if (require.main === module) {
-  fetchAndStoreGTProfiles()
-    .then(count => {
-      console.log(`Completed storing ${count} profiles!`);
-      process.exit(0);
-    })
-    .catch(error => {
-      console.error('Fatal error:', error);
-      process.exit(1);
-    });
-}
+module.exports = { fetchAndStoreGTProfiles };
