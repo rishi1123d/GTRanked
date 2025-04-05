@@ -1,33 +1,39 @@
-import { NextResponse } from "next/server"
-import { recordVote, getProfileById } from "@/lib/profiles"
-import { calculateElo } from "@/lib/elo"
+import { NextResponse } from "next/server";
+import { recordVote, getProfileById } from "@/lib/profiles";
 
 export async function POST(request: Request) {
   try {
-    const { winnerId, loserId, sessionId } = await request.json()
+    const { winnerId, loserId, sessionId } = await request.json();
 
     if (!sessionId) {
-      return NextResponse.json({ error: "Session ID is required" }, { status: 400 })
+      return NextResponse.json(
+        { error: "Session ID is required" },
+        { status: 400 }
+      );
     }
 
     // Convert IDs to numbers (they come as strings from frontend)
-    const winnerIdNum = winnerId ? parseInt(winnerId, 10) : null
-    const loserIdNum = parseInt(loserId, 10)
+    const winnerIdNum = winnerId ? parseInt(winnerId, 10) : null;
+    const loserIdNum = parseInt(loserId, 10);
 
     // For ties, winnerId will be null
-    const leftProfileId = winnerIdNum || loserIdNum
-    const rightProfileId = winnerIdNum === leftProfileId ? loserIdNum : leftProfileId
-    
+    const leftProfileId = winnerIdNum || loserIdNum;
+    const rightProfileId =
+      winnerIdNum === leftProfileId ? loserIdNum : leftProfileId;
+
     // Record the vote in Supabase
     // This will trigger the ELO update function automatically
-    await recordVote(leftProfileId, rightProfileId, winnerIdNum, sessionId)
-    
+    await recordVote(leftProfileId, rightProfileId, winnerIdNum, sessionId);
+
     // Get the updated profiles to return the new ELO ratings
-    const leftProfile = await getProfileById(leftProfileId)
-    const rightProfile = await getProfileById(rightProfileId)
-    
+    const leftProfile = await getProfileById(leftProfileId);
+    const rightProfile = await getProfileById(rightProfileId);
+
     if (!leftProfile || !rightProfile) {
-      return NextResponse.json({ error: "One or both profiles not found" }, { status: 404 })
+      return NextResponse.json(
+        { error: "One or both profiles not found" },
+        { status: 404 }
+      );
     }
 
     // In case of a tie, both are considered neither winner nor loser
@@ -37,38 +43,41 @@ export async function POST(request: Request) {
         tie: true,
         profiles: [
           {
-            id: leftProfile.id,
+            id: leftProfile.id.toString(),
             name: leftProfile.full_name,
-            elo: leftProfile.elo_rating
+            elo: leftProfile.elo_rating,
           },
           {
-            id: rightProfile.id,
+            id: rightProfile.id.toString(),
             name: rightProfile.full_name,
-            elo: rightProfile.elo_rating
-          }
-        ]
-      })
+            elo: rightProfile.elo_rating,
+          },
+        ],
+      });
     }
 
     // Determine which is winner and which is loser
-    const winner = winnerIdNum === leftProfile.id ? leftProfile : rightProfile
-    const loser = winnerIdNum === leftProfile.id ? rightProfile : leftProfile
-    
+    const winner = winnerIdNum === leftProfile.id ? leftProfile : rightProfile;
+    const loser = winnerIdNum === leftProfile.id ? rightProfile : leftProfile;
+
     return NextResponse.json({
       success: true,
       winner: {
-        id: winner.id,
+        id: winner.id.toString(),
         name: winner.full_name,
-        elo: winner.elo_rating
+        elo: winner.elo_rating,
       },
       loser: {
-        id: loser.id,
+        id: loser.id.toString(),
         name: loser.full_name,
-        elo: loser.elo_rating
-      }
-    })
+        elo: loser.elo_rating,
+      },
+    });
   } catch (error) {
-    console.error("Error processing vote:", error)
-    return NextResponse.json({ error: "Failed to process vote" }, { status: 500 })
+    console.error("Error processing vote:", error);
+    return NextResponse.json(
+      { error: "Failed to process vote" },
+      { status: 500 }
+    );
   }
 }
