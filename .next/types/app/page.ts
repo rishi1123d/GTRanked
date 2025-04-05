@@ -1,4 +1,4 @@
-// File: /Users/vik/GTRanked/app/page.tsx
+// File: /Users/rishikanaparti/Gtranked/GTRanked/app/page.tsx
 import * as entry from '../../../app/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

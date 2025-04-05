@@ -1,3 +1,8 @@
 {
-  "/vote/page": "app/vote/page.js"
+  "/_not-found/page": "app/_not-found/page.js",
+  "/page": "app/page.js",
+  "/vote/page": "app/vote/page.js",
+  "/api/votes/route": "app/api/votes/route.js",
+  "/api/vote/route": "app/api/vote/route.js",
+  "/api/profiles/random/route": "app/api/profiles/random/route.js"
 }

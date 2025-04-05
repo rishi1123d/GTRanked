@@ -1,4 +1,4 @@
-// File: /Users/vik/GTRanked/app/api/votes/route.ts
+// File: /Users/rishikanaparti/Gtranked/GTRanked/app/api/votes/route.ts
 import * as entry from '../../../../../app/api/votes/route.js'
 import type { NextRequest } from 'next/server.js'
 
