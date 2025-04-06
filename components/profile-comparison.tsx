@@ -2,8 +2,9 @@
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import type { ProfileType } from "@/lib/types"
-import { ChevronRight, CheckCircle2, XCircle } from "lucide-react"
+import { ChevronRight, CheckCircle2, XCircle, TrendingUp, TrendingDown, Linkedin } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
+import { calculateEloWithOutcome } from "@/lib/elo"
 
 interface ProfileComparisonProps {
   leftProfile: ProfileType
@@ -23,23 +24,29 @@ export function ProfileComparison({
   const [prediction, setPrediction] = useState<string | null>(null);
   const [internalShowResults, setInternalShowResults] = useState(false);
   const [countdown, setCountdown] = useState(5);
+  const [leftProfileLocal, setLeftProfileLocal] = useState<ProfileType>(leftProfile);
+  const [rightProfileLocal, setRightProfileLocal] = useState<ProfileType>(rightProfile);
+  const [eloChanges, setEloChanges] = useState<{left: number, right: number}>({left: 0, right: 0});
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   
   // Combine external and internal show results
   const showResults = externalShowResults || internalShowResults;
   
   useEffect(() => {
-    // Reset prediction when profiles change
+    // Reset prediction and local profiles when profiles change
     if (!externalShowResults) {
       setPrediction(null);
       setInternalShowResults(false);
       setCountdown(5);
+      setLeftProfileLocal(leftProfile);
+      setRightProfileLocal(rightProfile);
+      setEloChanges({left: 0, right: 0});
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
     }
-  }, [leftProfile.id, rightProfile.id, externalShowResults]);
+  }, [leftProfile.id, rightProfile.id, externalShowResults, leftProfile, rightProfile]);
   
   // Start countdown when results are shown
   useEffect(() => {
@@ -67,24 +74,98 @@ export function ProfileComparison({
       }
     };
   }, [showResults, countdown]);
+
+  const updateEloRatings = (winnerId: string | null) => {
+    if (winnerId === null) return; // No ELO changes for ties
+    
+    // Get current ratings
+    const leftRating = leftProfileLocal.elo;
+    const rightRating = rightProfileLocal.elo;
+    
+    // Determine if user voted for the higher or lower ELO profile
+    const isLeftHigherElo = leftRating > rightRating;
+    const isRightHigherElo = rightRating > leftRating;
+    const isLeftWinner = winnerId === leftProfileLocal.id;
+    
+    // Calculate outcome for ELO formula
+    // 1 if higher ELO was selected (expected outcome)
+    // 0 if lower ELO was selected (unexpected outcome)
+    // 0.5 if equal ELO (should be rare)
+    let outcome = 0.5; // Default for equal ELO
+    
+    if (isLeftHigherElo) {
+      outcome = isLeftWinner ? 1 : 0; // 1 if highest was selected, 0 if not
+    } else if (isRightHigherElo) {
+      outcome = !isLeftWinner ? 1 : 0; // 1 if highest was selected, 0 if not
+    }
+    
+    // Calculate new ratings using the ELO algorithm with outcome
+    const result = calculateEloWithOutcome(
+      leftRating, 
+      rightRating,
+      isLeftWinner ? 1 : 0, // The outcome is always 1 for the selected profile, 0 for the other
+      32 // Standard K-factor
+    );
+    
+    // Update local profiles with new ratings
+    setLeftProfileLocal(prev => ({...prev, elo: result.playerA}));
+    setRightProfileLocal(prev => ({...prev, elo: result.playerB}));
+    
+    // Calculate ELO changes for display
+    const leftChange = result.playerA - leftRating;
+    const rightChange = result.playerB - rightRating;
+    setEloChanges({left: leftChange, right: rightChange});
+  };
   
   const handlePrediction = (profileId: string | null) => {
     setPrediction(profileId);
     setInternalShowResults(true);
     setCountdown(5);
+    
+    // Update ELO ratings locally
+    updateEloRatings(profileId);
+    
+    // Pass the vote to the parent component to handle server updates
     onVote(profileId);
   };
   
   const isCorrectPrediction = () => {
-    if (prediction === null) return false; // Equal prediction
-    
-    if (leftProfile.elo === rightProfile.elo) {
-      // If ELO scores are equal, the "Equal" prediction was correct
-      return prediction === null;
+    // If user predicted Equal (null)
+    if (prediction === null) {
+      // If profiles actually have equal ELO, prediction was correct
+      return leftProfileLocal.elo === rightProfileLocal.elo;
     }
     
-    const higherEloProfile = leftProfile.elo > rightProfile.elo ? leftProfile.id : rightProfile.id;
+    // If ELO scores are actually equal but user didn't pick Equal
+    if (leftProfileLocal.elo === rightProfileLocal.elo) {
+      return false;
+    }
+    
+    // Otherwise, check if user picked the profile with higher ELO
+    const higherEloProfile = leftProfileLocal.elo > rightProfileLocal.elo ? leftProfileLocal.id : rightProfileLocal.id;
     return prediction === higherEloProfile;
+  };
+  
+  // This function determines if a specific profile is the correct one
+  // when Equal button is clicked
+  const isCorrectProfileForEqualPrediction = (profileId: string) => {
+    // When Equal is clicked (prediction is null)
+    if (prediction === null) {
+      // If profiles actually have equal ELO, both are correct
+      if (leftProfileLocal.elo === rightProfileLocal.elo) {
+        return true;
+      }
+      
+      // Otherwise, the profile with higher ELO is the correct one
+      const higherEloProfileId = leftProfileLocal.elo > rightProfileLocal.elo 
+        ? leftProfileLocal.id 
+        : rightProfileLocal.id;
+      
+      return profileId === higherEloProfileId;
+    }
+    
+    // For non-Equal predictions, use the regular logic
+    return prediction === profileId && isCorrectPrediction();
   };
   
   const handleNextClick = () => {
@@ -95,6 +176,7 @@ export function ProfileComparison({
       setInternalShowResults(false);
       setPrediction(null);
       setCountdown(5);
+      setEloChanges({left: 0, right: 0});
     }
   };
 
@@ -113,49 +195,58 @@ export function ProfileComparison({
           </div>
         </div>
       )}
-      
+
       {/* Left Profile */}
       <div
-        className={`flex-1 bg-white rounded-2xl p-3 sm:p-4 md:p-5 lg:p-6 shadow-sm hover:shadow-md transition-all duration-200 border cursor-pointer transform ${
-          showResults && prediction === leftProfile.id 
-            ? (isCorrectPrediction() 
-                ? "border-green-300 shadow-lg" 
-                : "border-red-300 shadow-lg")
-            : "border-gray-100 hover:border-yellow-300 hover:scale-[1.02]"
-        } overflow-y-auto max-h-[calc(100vh-150px)] h-full`}
-        onClick={() => !showResults && handlePrediction(leftProfile.id)}
+        className={`flex-1 bg-white rounded-2xl p-5 sm:p-6 md:p-7 shadow-sm hover:shadow-lg transition-all duration-200 border cursor-pointer transform ${
+          showResults
+            ? (prediction === leftProfileLocal.id 
+                ? (isCorrectPrediction() 
+                    ? "border-green-300 shadow-lg" 
+                    : "border-red-300 shadow-lg")
+                : prediction === null 
+                  ? (isCorrectProfileForEqualPrediction(leftProfileLocal.id) 
+                      ? "border-green-300 shadow-lg" 
+                      : "border-red-300 shadow-lg")
+                  : "border-gray-100")
+            : "border-gray-100 hover:border-yellow-300 hover:scale-[1.01]"
+        } h-full`}
+        onClick={() => !showResults && handlePrediction(leftProfileLocal.id)}
       >
-        {showResults && prediction === leftProfile.id && (
+        {showResults && (prediction === leftProfileLocal.id || prediction === null) && (
           <div className="absolute top-4 right-4 z-10">
-            {isCorrectPrediction() ? (
-              <div className="bg-green-100 text-green-700 rounded-full px-3 py-1 text-sm font-medium flex items-center">
-                <CheckCircle2 className="w-4 h-4 mr-1" />
-                Correct!
-              </div>
-            ) : (
-              <div className="bg-red-100 text-red-700 rounded-full px-3 py-1 text-sm font-medium flex items-center">
-                <XCircle className="w-4 h-4 mr-1" />
-                Wrong
-              </div>
-            )}
+            {prediction === null 
+              ? (isCorrectProfileForEqualPrediction(leftProfileLocal.id) ? (
+                  <div className="bg-green-100 text-green-700 rounded-full px-3 py-1 text-sm font-medium flex items-center">
+                    <CheckCircle2 className="w-4 h-4 mr-1" />
+                    Correct!
+                  </div>
+                ) : (
+                  <div className="bg-red-100 text-red-700 rounded-full px-3 py-1 text-sm font-medium flex items-center">
+                    <XCircle className="w-4 h-4 mr-1" />
+                    Wrong
+                  </div>
+                ))
+              : (isCorrectPrediction() ? (
+                  <div className="bg-green-100 text-green-700 rounded-full px-3 py-1 text-sm font-medium flex items-center">
+                    <CheckCircle2 className="w-4 h-4 mr-1" />
+                    Correct!
+                  </div>
+                ) : (
+                  <div className="bg-red-100 text-red-700 rounded-full px-3 py-1 text-sm font-medium flex items-center">
+                    <XCircle className="w-4 h-4 mr-1" />
+                    Wrong
+                  </div>
+                ))
+            }
           </div>
         )}
         
-        <ProfileDisplay profile={leftProfile} showElo={showResults} />
-        
-        {!showResults && (
-          <div className="mt-6 pt-6 border-t border-gray-100">
-            <Button
-              className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white rounded-xl h-12"
-              onClick={(e) => {
-                e.stopPropagation()
-                handlePrediction(leftProfile.id)
-              }}
-            >
-              Vote for this profile
-            </Button>
-          </div>
-        )}
+        <ProfileDisplay 
+          profile={leftProfileLocal} 
+          showElo={showResults} 
+          eloChange={showResults ? eloChanges.left : 0} 
+        />
       </div>
 
       {/* Center Voting Controls */}
@@ -188,166 +279,173 @@ export function ProfileComparison({
 
       {/* Right Profile */}
       <div
-        className={`flex-1 bg-white rounded-2xl p-3 sm:p-4 md:p-5 lg:p-6 shadow-sm hover:shadow-md transition-all duration-200 border cursor-pointer transform ${
-          showResults && prediction === rightProfile.id 
-            ? (isCorrectPrediction() 
-                ? "border-green-300 shadow-lg" 
-                : "border-red-300 shadow-lg")
-            : "border-gray-100 hover:border-yellow-300 hover:scale-[1.02]"
-        } overflow-y-auto max-h-[calc(100vh-150px)] h-full`}
-        onClick={() => !showResults && handlePrediction(rightProfile.id)}
+        className={`flex-1 bg-white rounded-2xl p-5 sm:p-6 md:p-7 shadow-sm hover:shadow-lg transition-all duration-200 border cursor-pointer transform ${
+          showResults
+            ? (prediction === rightProfileLocal.id 
+                ? (isCorrectPrediction() 
+                    ? "border-green-300 shadow-lg" 
+                    : "border-red-300 shadow-lg")
+                : prediction === null 
+                  ? (isCorrectProfileForEqualPrediction(rightProfileLocal.id) 
+                      ? "border-green-300 shadow-lg" 
+                      : "border-red-300 shadow-lg")
+                  : "border-gray-100")
+            : "border-gray-100 hover:border-yellow-300 hover:scale-[1.01]"
+        } h-full`}
+        onClick={() => !showResults && handlePrediction(rightProfileLocal.id)}
       >
-        {showResults && prediction === rightProfile.id && (
+        {showResults && (prediction === rightProfileLocal.id || prediction === null) && (
           <div className="absolute top-4 right-4 z-10">
-            {isCorrectPrediction() ? (
-              <div className="bg-green-100 text-green-700 rounded-full px-3 py-1 text-sm font-medium flex items-center">
-                <CheckCircle2 className="w-4 h-4 mr-1" />
-                Correct!
-              </div>
-            ) : (
-              <div className="bg-red-100 text-red-700 rounded-full px-3 py-1 text-sm font-medium flex items-center">
-                <XCircle className="w-4 h-4 mr-1" />
-                Wrong
-              </div>
-            )}
+            {prediction === null 
+              ? (isCorrectProfileForEqualPrediction(rightProfileLocal.id) ? (
+                  <div className="bg-green-100 text-green-700 rounded-full px-3 py-1 text-sm font-medium flex items-center">
+                    <CheckCircle2 className="w-4 h-4 mr-1" />
+                    Correct!
+                  </div>
+                ) : (
+                  <div className="bg-red-100 text-red-700 rounded-full px-3 py-1 text-sm font-medium flex items-center">
+                    <XCircle className="w-4 h-4 mr-1" />
+                    Wrong
+                  </div>
+                ))
+              : (isCorrectPrediction() ? (
+                  <div className="bg-green-100 text-green-700 rounded-full px-3 py-1 text-sm font-medium flex items-center">
+                    <CheckCircle2 className="w-4 h-4 mr-1" />
+                    Correct!
+                  </div>
+                ) : (
+                  <div className="bg-red-100 text-red-700 rounded-full px-3 py-1 text-sm font-medium flex items-center">
+                    <XCircle className="w-4 h-4 mr-1" />
+                    Wrong
+                  </div>
+                ))
+            }
           </div>
         )}
         
-        <ProfileDisplay profile={rightProfile} showElo={showResults} />
-        
-        {!showResults && (
-          <div className="mt-6 pt-6 border-t border-gray-100">
-            <Button
-              className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white rounded-xl h-12"
-              onClick={(e) => {
-                e.stopPropagation()
-                handlePrediction(rightProfile.id)
-              }}
-            >
-              Vote for this profile
-            </Button>
-          </div>
-        )}
+        <ProfileDisplay 
+          profile={rightProfileLocal} 
+          showElo={showResults} 
+          eloChange={showResults ? eloChanges.right : 0} 
+        />
       </div>
     </div>
   )
 }
 
-function ProfileDisplay({ profile, showElo = false }: { profile: ProfileType, showElo?: boolean }) {
+function ProfileDisplay({ profile, showElo = false, eloChange = 0 }: { profile: ProfileType, showElo?: boolean, eloChange?: number }) {
   return (
-    <div className="space-y-4 sm:space-y-5 lg:space-y-6">
+    <div className="space-y-7">
+      {/* Profile Header */}
       <div className="flex flex-col items-center">
-        <Avatar className="h-14 w-14 sm:h-16 sm:w-16 md:h-18 md:w-18 lg:h-20 lg:w-20 bg-gradient-to-br from-indigo-400 to-purple-500 shadow-md">
-          <AvatarFallback className="text-md sm:text-lg md:text-xl text-white font-light">{profile.name.charAt(0)}</AvatarFallback>
+        <Avatar className="h-24 w-24 sm:h-28 sm:w-28 bg-gradient-to-br from-indigo-400 to-purple-500 shadow-md mb-4">
+          <AvatarFallback className="text-xl sm:text-2xl text-white font-light">{profile.name.charAt(0)}</AvatarFallback>
         </Avatar>
-        <div className="mt-2 sm:mt-3 text-center">
-          <h3 className="text-base sm:text-lg md:text-xl font-semibold">{profile.name}</h3>
-          <p className="text-sm text-gray-500">{profile.title}</p>
-          {showElo && (
-            <div className="mt-2 bg-yellow-50 text-yellow-800 text-xs sm:text-sm font-medium px-2 sm:px-3 py-1 rounded-full inline-block">
-              ELO: {profile.elo}
+        
+        <h3 className="text-xl sm:text-2xl md:text-3xl font-bold mb-1">{profile.name}</h3>
+        {profile.title && <p className="text-gray-500 font-medium">{profile.title}</p>}
+        
+        {showElo && (
+          <div className="flex items-center justify-center mt-3">
+            <div className="bg-gray-50 py-1.5 px-4 rounded-full text-gray-800 text-base sm:text-lg font-medium shadow-sm">
+              Elo: {profile.elo} 
+              {eloChange !== 0 && (
+                <span className={`ml-1 inline-flex items-center ${eloChange > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {eloChange > 0 ? (
+                    <>
+                      <TrendingUp className="h-4 w-4 mr-0.5" />
+                      (+{eloChange})
+                    </>
+                  ) : (
+                    <>
+                      <TrendingDown className="h-4 w-4 mr-0.5" />
+                      ({eloChange})
+                    </>
+                  )}
+                </span>
+              )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
+      {/* Experience Section */}
       <div>
-        <h3 className="text-base sm:text-lg font-medium mb-2 sm:mb-3 flex items-center">
-          <span className="bg-yellow-100 w-5 h-5 sm:w-6 sm:h-6 inline-flex items-center justify-center rounded-full mr-2 text-yellow-700 text-xs sm:text-sm">
-            E
-          </span>
-          Experience
-        </h3>
-        <div className="space-y-3 sm:space-y-4">
-          {profile.experiences.map((exp, index) => (
-            <div key={index} className="flex items-start gap-2 sm:gap-3">
+        <h3 className="text-lg font-bold mb-3 text-center border-b pb-2">Experience</h3>
+        <div className="space-y-4">
+          {profile.experiences.slice(0, 3).map((exp, index) => (
+            <div key={index} className="flex items-start gap-3">
               <CompanyLogo company={exp.company} />
               <div>
-                <p className="font-medium text-sm sm:text-base">{exp.title}</p>
-                <p className="text-xs sm:text-sm text-gray-500">{exp.company}</p>
-                <p className="text-xs text-gray-400">{exp.duration}</p>
+                <p className="font-semibold text-base sm:text-lg">{exp.title}</p>
+                <p className="text-gray-600">{exp.company}</p>
+                {exp.duration && <p className="text-sm text-gray-500">{exp.duration}</p>}
               </div>
             </div>
           ))}
+          {profile.experiences.length > 3 && (
+            <p className="text-sm text-gray-500 italic text-center">+{profile.experiences.length - 3} more experiences</p>
+          )}
         </div>
       </div>
 
+      {/* Education Section */}
       <div>
-        <h3 className="text-base sm:text-lg font-medium mb-2 sm:mb-3 flex items-center">
-          <span className="bg-blue-100 w-5 h-5 sm:w-6 sm:h-6 inline-flex items-center justify-center rounded-full mr-2 text-blue-700 text-xs sm:text-sm">
-            E
-          </span>
-          Education
-        </h3>
-        <div className="space-y-3 sm:space-y-4">
-          <div className="flex items-start gap-2 sm:gap-3">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-xl bg-yellow-600 flex items-center justify-center text-white font-bold text-xs">
-              GT
-            </div>
-            <div>
-              <p className="font-medium text-sm sm:text-base">Georgia Tech</p>
-              <p className="text-xs sm:text-sm text-gray-500">
-                {profile.degree} in {profile.major}
-              </p>
-              <p className="text-xs text-gray-400">Class of {profile.graduationYear}</p>
-            </div>
+        <h3 className="text-lg font-bold mb-3 text-center border-b pb-2">Education</h3>
+        <div className="space-y-3">
+          {/* Main education */}
+          <div className="text-center">
+            <p className="font-semibold text-lg">{profile.previousEducation?.school || "Georgia Tech"}</p>
+            <p className="text-gray-700">
+              {profile.degree} in {profile.major}
+            </p>
+            {profile.graduationYear && (
+              <p className="text-sm text-gray-500">Class of {profile.graduationYear}</p>
+            )}
           </div>
 
+          {/* Previous education if available */}
           {profile.previousEducation && (
-            <div className="flex items-start gap-2 sm:gap-3">
-              <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-xl bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xs">
-                {profile.previousEducation.school.substring(0, 2).toUpperCase()}
-              </div>
-              <div>
-                <p className="font-medium text-sm sm:text-base">{profile.previousEducation.school}</p>
-                <p className="text-xs sm:text-sm text-gray-500">
+            <div className="text-center mt-3 pt-3 border-t border-gray-100">
+              <p className="font-semibold text-lg">The Winsor School</p>
+              {profile.previousEducation.degree && (
+                <p className="text-sm text-gray-600">
                   {profile.previousEducation.degree} in {profile.previousEducation.major}
                 </p>
-                <p className="text-xs text-gray-400">Class of {profile.previousEducation.year}</p>
-              </div>
+              )}
             </div>
           )}
         </div>
       </div>
 
-      {profile.achievements && profile.achievements.length > 0 && (
+      {/* Honors Section - Show if available */}
+      {profile.achievements?.length > 0 && (
         <div>
-          <h3 className="text-base sm:text-lg font-medium mb-2 sm:mb-3 flex items-center">
-            <span className="bg-purple-100 w-5 h-5 sm:w-6 sm:h-6 inline-flex items-center justify-center rounded-full mr-2 text-purple-700 text-xs sm:text-sm">
-              H
-            </span>
-            Honors
-          </h3>
-          <div className="space-y-3 sm:space-y-4">
-            {profile.achievements.map((achievement, index) => (
-              <div key={index} className="bg-gray-50 rounded-xl p-2 sm:p-3">
-                <p className="font-medium text-sm sm:text-base">{achievement.title}</p>
-                {achievement.description && <p className="text-xs sm:text-sm text-gray-500">{achievement.description}</p>}
+          <h3 className="text-lg font-bold mb-3 text-center border-b pb-2">Honors</h3>
+          <div className="space-y-2">
+            {profile.achievements?.slice(0, 2).map((achievement, index) => (
+              <div key={index} className="text-center">
+                <p className="font-medium text-base">{achievement.title}</p>
+                {achievement.description && <p className="text-sm text-gray-500">{achievement.description}</p>}
               </div>
             ))}
+            {(profile.achievements && profile.achievements.length > 2) && (
+              <p className="text-sm text-gray-500 italic text-center">+{profile.achievements.length - 2} more honors</p>
+            )}
           </div>
         </div>
       )}
 
-      <div>
-        <h3 className="text-base sm:text-lg font-medium mb-2 sm:mb-3 flex items-center">
-          <span className="bg-green-100 w-5 h-5 sm:w-6 sm:h-6 inline-flex items-center justify-center rounded-full mr-2 text-green-700 text-xs sm:text-sm">
-            S
-          </span>
-          Skills
-        </h3>
-        <div className="flex flex-wrap gap-2 sm:gap-3">
-          {profile.skills.slice(0, 5).map((skill, index) => (
-            <span key={index} className="px-2 sm:px-3 py-1 bg-gray-50 text-gray-700 text-xs sm:text-sm rounded-full">
-              {skill}
-            </span>
-          ))}
-          {profile.skills.length > 5 && (
-            <span className="px-2 sm:px-3 py-1 bg-gray-50 text-gray-500 text-xs sm:text-sm rounded-full">
-              +{profile.skills.length - 5} more
-            </span>
-          )}
-        </div>
+      {/* LinkedIn Button - Modern design */}
+      <div className="pt-3">
+        <a 
+          href="#" 
+          onClick={(e) => e.preventDefault()}
+          className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl font-medium transition-colors shadow-sm"
+        >
+          <Linkedin className="h-5 w-5" />
+          View LinkedIn Profile
+        </a>
       </div>
     </div>
   )
