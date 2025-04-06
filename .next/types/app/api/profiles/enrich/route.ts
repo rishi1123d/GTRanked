@@ -1,4 +1,4 @@
-// File: /Users/vik/GTRanked/app/api/profiles/enrich/route.ts
+// File: /Users/rishikanaparti/Gtranked/GTRanked/app/api/profiles/enrich/route.ts
 import * as entry from '../../../../../../app/api/profiles/enrich/route.js'
 import type { NextRequest } from 'next/server.js'
 
