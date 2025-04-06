@@ -13,26 +13,8 @@ interface SupabaseProfile {
   is_student: boolean;
   elo_rating: number;
   location?: string;
-  profile_image_url?: string;
-  linkedin_url?: string;
-  exp1_title?: string;
-  exp1_company?: string;
-  exp1_start_date?: string;
-  exp1_end_date?: string;
-  exp1_is_current: boolean;
-  exp1_company_logo_url?: string;
-  exp2_title?: string;
-  exp2_company?: string;
-  exp2_start_date?: string;
-  exp2_end_date?: string;
-  exp2_is_current: boolean;
-  exp2_company_logo_url?: string;
-  exp3_title?: string;
-  exp3_company?: string;
-  exp3_start_date?: string;
-  exp3_end_date?: string;
-  exp3_is_current: boolean;
-  exp3_company_logo_url?: string;
+  is_enriched?: boolean;
+  aviato_id?: string;
   [key: string]: any; // Allow for other fields
 }
 
@@ -58,10 +40,45 @@ export async function GET(request: Request) {
       excludeIds
     )) as SupabaseProfile[];
 
-    // Fetch detailed profiles with experience and education data
-    const detailedProfiles = await Promise.all(
-      basicProfiles.map((profile) => getProfileById(profile.id))
-    );
+    // Check if profiles need enrichment and enrich them
+    const detailedProfiles = [];
+    
+    for (const profile of basicProfiles) {
+      try {
+        let enrichedProfile;
+        
+        // Check if profile needs enrichment
+        if (profile.is_enriched !== true) {
+          console.log(`Profile ${profile.id} (${profile.full_name}) needs enrichment`);
+          
+          // Call the enrichment endpoint
+          const enrichResponse = await fetch(
+            `${process.env.VERCEL_URL || 'http://localhost:3000'}/api/profiles/enrich?aviato_id=${profile.aviato_id}`,
+            { method: 'GET' }
+          );
+          
+          if (!enrichResponse.ok) {
+            console.error(`Error enriching profile ${profile.id}: ${enrichResponse.statusText}`);
+            continue;
+          }
+          
+          const enrichResult = await enrichResponse.json();
+          enrichedProfile = enrichResult.profile;
+          
+          console.log(`Successfully enriched profile ${profile.id} ${enrichResult.enriched ? '(newly enriched)' : '(already enriched)'}`);
+        } else {
+          // Profile is already enriched, just get the details
+          enrichedProfile = await getProfileById(profile.id);
+          console.log(`Using already enriched profile ${profile.id}`);
+        }
+        
+        if (enrichedProfile) {
+          detailedProfiles.push(enrichedProfile);
+        }
+      } catch (error) {
+        console.error(`Error processing profile ${profile.id}:`, error);
+      }
+    }
 
     // Transform profiles to match frontend format
     const transformedProfiles = detailedProfiles.map((profile: any) => {
