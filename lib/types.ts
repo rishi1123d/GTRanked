@@ -8,6 +8,7 @@ export interface ProfileType {
   graduationYear: number
   isStudent: boolean
   elo: number
+  linkedinUrl?: string  // Optional LinkedIn profile URL
   skills: string[]
   experiences: {
     title: string
@@ -25,4 +26,3 @@ export interface ProfileType {
     year: number
   }
 }
-

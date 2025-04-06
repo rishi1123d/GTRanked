@@ -150,13 +150,43 @@ export async function GET(request: Request) {
         profile.education && profile.education.length > 0
           ? profile.education[0].degree || "BS"
           : "BS";
+          
+      // Extract major from headline if it's not available in the profile
+      let major = profile.major || "";
+      
+      // If major is empty, try to extract it from the headline
+      if (!major && profile.headline) {
+        // Look for common patterns like "CS @ Georgia Tech" or "studying Computer Science at GT"
+        const headline = profile.headline.toLowerCase();
+        if (headline.includes("cs @") || headline.includes("cs at")) {
+          major = "Computer Science";
+        } else if (headline.includes("computer science")) {
+          major = "Computer Science";
+        } else if (headline.includes("electrical engineering")) {
+          major = "Electrical Engineering";
+        } else if (headline.includes("mechanical engineering")) {
+          major = "Mechanical Engineering";
+        } else if (headline.includes("business")) {
+          major = "Business Administration";
+        } else if (headline.includes("data science")) {
+          major = "Data Science";
+        }
+      }
+      
+      // If still no major found, use part of the degree if it contains "in"
+      if (!major && degree && degree.includes(" in ")) {
+        const parts = degree.split(" in ");
+        if (parts.length > 1) {
+          major = parts[1];
+        }
+      }
 
       return {
         id: profile.id.toString(),
         name: profile.full_name || "Unknown",
         title: profile.title || "",
         company: profile.company || "",
-        major: profile.major || "Unknown",
+        major: major || "Unknown Major",
         graduationYear: profile.graduation_year || 0,
         isStudent: profile.is_student,
         elo: profile.elo_rating,
