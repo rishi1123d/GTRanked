@@ -7,6 +7,9 @@ import { Rocket, Trophy, Vote } from "lucide-react";
 import { ProfileComparison } from "@/components/profile-comparison";
 import { v4 as uuidv4 } from "uuid";
 
+// Add a declaration for uuid
+declare module 'uuid';
+
 // Define types
 interface ProfileType {
   id: string;
@@ -24,10 +27,20 @@ interface ProfileType {
     company: string;
     duration: string;
   }[];
+  education?: {
+    profile_id: string;
+    school_id: string;
+    school_name: string;
+    degree: string;
+    field_of_study: string;
+    start_date: string | null;
+    end_date: string | null;
+  }[];
   achievements?: {
     title: string;
     description?: string;
   }[];
+  linkedinUrl?: string;
 }
 
 interface VoteHistoryItem {
@@ -50,7 +63,7 @@ const getOrCreateSessionId = (): string => {
     }
     return sessionId;
   }
-  return "";
+  return ""; // Return empty string for SSR
 };
 
 export default function VotePage() {
@@ -154,8 +167,22 @@ export default function VotePage() {
     }
   };
 
-  const handleNextComparison = () => {
-    getNewProfiles();
+  const handleNextComparison = async (
+    leftProfilePrefetch?: ProfileType,
+    rightProfilePrefetch?: ProfileType
+  ) => {
+    // If prefetched profiles are provided, use them directly
+    if (leftProfilePrefetch && rightProfilePrefetch) {
+      console.log("Using prefetched profiles for next comparison");
+      setLeftProfile(leftProfilePrefetch);
+      setRightProfile(rightProfilePrefetch);
+      setIsPredicting(false);
+      setIsLoading(false);
+    } else {
+      // Otherwise fetch new profiles
+      console.log("No prefetched profiles available, fetching new profiles");
+      await getNewProfiles();
+    }
   };
 
   // Initialize on first render

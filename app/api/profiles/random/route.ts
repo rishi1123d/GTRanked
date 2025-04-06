@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
-// Import the JavaScript version of the profiles module
-const { getRandomProfiles, getProfileById } = require("@/lib/profiles-js");
+import type { ProfileType } from "@/lib/types";
+import { getProfileById } from "@/lib/profiles-js";
+const { supabase } = require("@/lib/supabase.js");
 
 // Define a type for the profile returned from Supabase
 interface SupabaseProfile {
   id: number;
-  full_name?: string;
+  aviato_id: string;
+  full_name: string;
+  headline?: string;
   title?: string;
   company?: string;
   major?: string;
@@ -14,8 +17,148 @@ interface SupabaseProfile {
   elo_rating: number;
   location?: string;
   is_enriched?: boolean;
-  aviato_id?: string;
+  education?: any[];
+  skills?: any[];
   [key: string]: any; // Allow for other fields
+}
+
+/**
+ * Get random profiles from the database, excluding specific IDs
+ * This now implements a smart ranking system to ensure users see a mix of high and average ELO profiles
+ */
+async function getRandomProfiles(excludeIds: number[] = []): Promise<SupabaseProfile[]> {
+  console.log("DIAGNOSTICS - getRandomProfiles called with excludeIds:", excludeIds);
+
+  try {
+    // First, check how many profiles we have in total
+    const { count, error: countError } = await supabase
+      .from('profiles')
+      .select('*', { count: 'exact', head: true });
+    
+    if (countError) {
+      console.error("Error getting profile count:", countError);
+      return [];
+    }
+    
+    console.log("DIAGNOSTICS - Total profile count:", count);
+    
+    // We'll use a weighted approach:
+    // - 30% chance of selecting a high-ELO profile (top 15%)
+    // - 70% chance of selecting a random profile from the rest
+    
+    // Get potential high-ELO profiles (top 15%)
+    const topProfileCount = Math.ceil((count || 0) * 0.15);
+    const { data: topProfiles, error: topError } = await supabase
+      .from('profiles')
+      .select('*')
+      .not('id', 'in', `(${excludeIds.join(',')})`)
+      .order('elo_rating', { ascending: false })
+      .limit(topProfileCount);
+    
+    if (topError) {
+      console.error("Error getting top profiles:", topError);
+      return [];
+    }
+    
+    // Now get a larger pool of regular profiles
+    const { data: regularProfiles, error: regularError } = await supabase
+      .from('profiles')
+      .select('*')
+      .not('id', 'in', `(${excludeIds.join(',')})`)
+      .order('id', { ascending: false }) // Just use ID for random-ish selection from newer profiles
+      .limit(50);
+    
+    if (regularError) {
+      console.error("Error getting regular profiles:", regularError);
+      return [];
+    }
+    
+    console.log(`DIAGNOSTICS - Fetched ${topProfiles.length} top profiles and ${regularProfiles.length} regular profiles`);
+    
+    // Function to select two distinct profiles with our weighted approach
+    const selectTwoProfiles = () => {
+      const selectedProfiles: SupabaseProfile[] = [];
+      
+      // For first profile: 30% chance of high-ELO, 70% chance of regular
+      const useHighEloFirst = Math.random() < 0.3 && topProfiles.length > 0;
+      
+      if (useHighEloFirst && topProfiles.length > 0) {
+        // Select random high-ELO profile
+        const randomIndex = Math.floor(Math.random() * topProfiles.length);
+        selectedProfiles.push(topProfiles[randomIndex]);
+        
+        // Remove from pool to avoid duplicates
+        topProfiles.splice(randomIndex, 1);
+      } else if (regularProfiles.length > 0) {
+        // Select random regular profile
+        const randomIndex = Math.floor(Math.random() * regularProfiles.length);
+        selectedProfiles.push(regularProfiles[randomIndex]);
+        
+        // Remove from pool to avoid duplicates
+        regularProfiles.splice(randomIndex, 1);
+      }
+      
+      // For second profile: If we used high-ELO first, use regular now
+      // If we used regular first, 30% chance of high-ELO, 70% chance of regular
+      const useHighEloSecond = !useHighEloFirst && Math.random() < 0.3 && topProfiles.length > 0;
+      
+      if (useHighEloSecond && topProfiles.length > 0) {
+        const randomIndex = Math.floor(Math.random() * topProfiles.length);
+        selectedProfiles.push(topProfiles[randomIndex]);
+      } else if (regularProfiles.length > 0) {
+        const randomIndex = Math.floor(Math.random() * regularProfiles.length);
+        selectedProfiles.push(regularProfiles[randomIndex]);
+      }
+      
+      return selectedProfiles;
+    };
+    
+    // Select two profiles with our algorithm
+    const selectedProfiles = selectTwoProfiles();
+    
+    // If we couldn't get two profiles, fall back to simple random selection
+    if (selectedProfiles.length < 2) {
+      const { data: fallbackProfiles, error: fallbackError } = await supabase
+        .from('profiles')
+        .select('*')
+        .not('id', 'in', `(${excludeIds.join(',')})`)
+        .order('RANDOM()')
+        .limit(2);
+      
+      if (fallbackError) {
+        console.error("Error getting fallback profiles:", fallbackError);
+        return [];
+      }
+      
+      console.log(`DIAGNOSTICS - Fell back to random selection, got ${fallbackProfiles.length} profiles`);
+      return fallbackProfiles;
+    }
+    
+    // Perform a join with education to get those records too
+    const selectedProfileIds = selectedProfiles.map(profile => profile.id);
+    const { data: profilesWithRelations, error: profilesError } = await supabase
+      .from('profiles')
+      .select(`
+        *,
+        education:education(*),
+        skills:skills(*)
+      `)
+      .in('id', selectedProfileIds)
+      .order('elo_rating', { ascending: false });
+    
+    if (profilesError) {
+      console.error("Error getting profiles with relations:", profilesError);
+      return [];
+    }
+    
+    console.log(`DIAGNOSTICS - First profile selected: ${selectedProfiles[0].id}`);
+    console.log(`DIAGNOSTICS - Second profile selected: ${selectedProfiles[1].id}`);
+    
+    return profilesWithRelations;
+  } catch (error) {
+    console.error("Error in getRandomProfiles:", error);
+    return [];
+  }
 }
 
 export async function GET(request: Request) {
@@ -233,6 +376,7 @@ export async function GET(request: Request) {
         skills, // Now using skills from the database
         experiences, // Using the formatted experiences from both sources
         linkedinUrl: profile.linkedin_url || null, // Include LinkedIn URL if available
+        education: profile.education || [], // Include the full education array
       };
     });
 

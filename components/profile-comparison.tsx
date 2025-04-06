@@ -10,7 +10,7 @@ interface ProfileComparisonProps {
   rightProfile: ProfileType
   onVote: (winnerId: string | null) => void
   showResults?: boolean
-  onNextComparison?: () => void
+  onNextComparison?: (leftProfile?: ProfileType, rightProfile?: ProfileType) => void
 }
 
 export function ProfileComparison({ 
@@ -24,9 +24,45 @@ export function ProfileComparison({
   const [internalShowResults, setInternalShowResults] = useState(false);
   const [countdown, setCountdown] = useState(5);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const [nextProfiles, setNextProfiles] = useState<{ leftProfile: ProfileType, rightProfile: ProfileType } | null>(null);
+  const prefetchingRef = useRef(false);
   
   // Combine external and internal show results
   const showResults = externalShowResults || internalShowResults;
+  
+  // Function to prefetch the next set of profiles
+  const prefetchNextProfiles = async () => {
+    if (prefetchingRef.current) return; // Prevent multiple prefetch requests
+    
+    prefetchingRef.current = true;
+    console.log("Prefetching next profiles...");
+    
+    try {
+      // Get the current profile IDs to exclude them from the next fetch
+      const excludeIds = [leftProfile.id, rightProfile.id].filter(Boolean).join(',');
+      const response = await fetch(`/api/profiles/random?exclude=${excludeIds}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        // Fixed: Check if data.profiles exists and has at least 2 profiles
+        if (data.profiles && data.profiles.length >= 2) {
+          setNextProfiles({
+            leftProfile: data.profiles[0],
+            rightProfile: data.profiles[1]
+          });
+          console.log("Successfully prefetched next profiles");
+        } else {
+          console.log("Not enough profiles returned for prefetching", data);
+        }
+      } else {
+        console.error("Failed to prefetch profiles:", await response.text());
+      }
+    } catch (error) {
+      console.error("Error prefetching profiles:", error);
+    } finally {
+      prefetchingRef.current = false;
+    }
+  };
   
   useEffect(() => {
     // Reset prediction when profiles change
@@ -34,6 +70,7 @@ export function ProfileComparison({
       setPrediction(null);
       setInternalShowResults(false);
       setCountdown(5);
+      setNextProfiles(null);
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
@@ -41,9 +78,16 @@ export function ProfileComparison({
     }
   }, [leftProfile.id, rightProfile.id, externalShowResults]);
   
-  // Start countdown when results are shown
+  // Start countdown when results are shown and trigger prefetch
   useEffect(() => {
-    if (showResults && countdown > 0) {
+    // Only start countdown if the user has made a prediction (voted)
+    // This ensures we don't automatically navigate without user interaction
+    if (showResults && countdown > 0 && prediction !== null) {
+      // Start prefetching when the countdown begins (and we don't already have prefetched profiles)
+      if (!nextProfiles && !prefetchingRef.current && countdown === 5) {
+        prefetchNextProfiles();
+      }
+      
       timerRef.current = setInterval(() => {
         setCountdown(prev => {
           if (prev <= 1) {
@@ -66,7 +110,7 @@ export function ProfileComparison({
         timerRef.current = null;
       }
     };
-  }, [showResults, countdown]);
+  }, [showResults, countdown, nextProfiles, prediction]);
   
   const handlePrediction = (profileId: string | null) => {
     setPrediction(profileId);
@@ -88,13 +132,28 @@ export function ProfileComparison({
   };
   
   const handleNextClick = () => {
-    if (onNextComparison) {
-      onNextComparison();
-    } else {
-      // Fallback to internal state reset
+    // If we have prefetched profiles, use them directly
+    if (nextProfiles) {
+      // Replace the current profiles with the prefetched ones
+      if (onNextComparison) {
+        // Providing the prefetched profiles to the parent component
+        onNextComparison(nextProfiles.leftProfile, nextProfiles.rightProfile);
+      }
+      // Reset state
+      setNextProfiles(null);
       setInternalShowResults(false);
       setPrediction(null);
       setCountdown(5);
+    } else {
+      // Fall back to regular behavior if prefetched profiles aren't available
+      if (onNextComparison) {
+        onNextComparison();
+      } else {
+        // Fallback to internal state reset
+        setInternalShowResults(false);
+        setPrediction(null);
+        setCountdown(5);
+      }
     }
   };
 
@@ -234,6 +293,13 @@ export function ProfileComparison({
 }
 
 function ProfileDisplay({ profile, showElo = false }: { profile: ProfileType, showElo?: boolean }) {
+  console.log("ProfileDisplay - Education data:", { 
+    profile_id: profile.id,
+    education: profile.education,
+    has_education: profile.education && profile.education.length > 0,
+    education_count: profile.education ? profile.education.length : 0
+  });
+  
   return (
     <div className="space-y-4 sm:space-y-5 lg:space-y-6">
       <div className="flex flex-col items-center">
@@ -259,16 +325,24 @@ function ProfileDisplay({ profile, showElo = false }: { profile: ProfileType, sh
           Experience
         </h3>
         <div className="space-y-3 sm:space-y-4">
-          {profile.experiences.map((exp, index) => (
-            <div key={index} className="flex items-start gap-2 sm:gap-3">
-              <CompanyLogo company={exp.company} />
+          {/* Only show the top 5 experiences */}
+          {profile.experiences && profile.experiences.slice(0, 5).map((experience, index) => (
+            <div key={index} className="flex gap-3 items-start">
+              <CompanyLogo company={typeof experience.company === 'string' ? experience.company : 
+                (experience.company && typeof experience.company === 'object' && 'name' in experience.company) ? 
+                experience.company.name : 'Unknown'} />
               <div>
-                <p className="font-medium text-sm sm:text-base">{exp.title}</p>
-                <p className="text-xs sm:text-sm text-gray-500">{exp.company}</p>
-                <p className="text-xs text-gray-400">{exp.duration}</p>
+                <div className="font-medium text-sm sm:text-base">{experience.title}</div>
+                <div className="text-gray-500 text-xs sm:text-sm">{typeof experience.company === 'string' ? experience.company : 
+                  (experience.company && typeof experience.company === 'object' && 'name' in experience.company) ? 
+                  experience.company.name : 'Unknown'}</div>
+                <div className="text-gray-400 text-xs">{experience.duration}</div>
               </div>
             </div>
           ))}
+          {profile.experiences && profile.experiences.length === 0 && (
+            <div className="text-gray-500 text-sm italic">No experience listed</div>
+          )}
         </div>
       </div>
 
@@ -280,6 +354,7 @@ function ProfileDisplay({ profile, showElo = false }: { profile: ProfileType, sh
           Education
         </h3>
         <div className="space-y-3 sm:space-y-4">
+          {/* Always show Georgia Tech education first if available */}
           <div className="flex items-start gap-2 sm:gap-3">
             <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-xl bg-yellow-600 flex items-center justify-center text-white font-bold text-xs">
               GT
@@ -292,7 +367,8 @@ function ProfileDisplay({ profile, showElo = false }: { profile: ProfileType, sh
               <p className="text-xs text-gray-400">Class of {profile.graduationYear}</p>
             </div>
           </div>
-
+          
+          {/* Show previous education if available from legacy structure */}
           {profile.previousEducation && (
             <div className="flex items-start gap-2 sm:gap-3">
               <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-xl bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xs">
@@ -307,7 +383,38 @@ function ProfileDisplay({ profile, showElo = false }: { profile: ProfileType, sh
               </div>
             </div>
           )}
-        </div>
+          
+          {/* Show any additional education from the education array, 
+              excluding Georgia Tech which is already shown above */}
+          {profile.education && profile.education.length > 0 && 
+            profile.education
+              .filter(edu => !edu.school_name.includes("Georgia Tech") && 
+                            !edu.school_name.includes("Georgia Institute of Technology"))
+              .map((edu, index) => (
+                <div key={index} className="flex items-start gap-2 sm:gap-3">
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-xl bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xs">
+                    {edu.school_name && 
+                      edu.school_name.split(' ')
+                        .filter(word => word.length > 0)
+                        .map(word => word[0])
+                        .join('')
+                        .substring(0, 2)
+                        .toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm sm:text-base">{edu.school_name}</p>
+                    <p className="text-xs sm:text-sm text-gray-500">
+                      {edu.degree} {edu.field_of_study ? `in ${edu.field_of_study}` : ''}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {edu.start_date ? new Date(edu.start_date).getFullYear() : ''} - {
+                        edu.end_date ? new Date(edu.end_date).getFullYear() : 'Present'
+                      }
+                    </p>
+                  </div>
+                </div>
+              ))
+          }        </div>
       </div>
 
       {profile.achievements && profile.achievements.length > 0 && (
