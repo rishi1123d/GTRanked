@@ -404,15 +404,6 @@ function ProfileDisplay({ profile, showElo = false, eloChange = 0 }: { profile: 
   // Check for LinkedIn URL in different potential properties
   const linkedinUrl = profile.linkedinUrl || (profile as any).linkedin_url;
   
-  // Debug logging for LinkedIn URL
-  console.log("Profile LinkedIn URL Debug:", {
-    id: profile.id,
-    name: profile.name,
-    linkedinUrl: profile.linkedinUrl,
-    linkedin_url: (profile as any).linkedin_url,
-    finalUrl: linkedinUrl
-  });
-  
   return (
     <div className="space-y-7">
       {/* Profile Header */}
@@ -572,13 +563,12 @@ function ProfileDisplay({ profile, showElo = false, eloChange = 0 }: { profile: 
             // Prevent navigation if no URL is available
             if (!linkedinUrl) {
               e.preventDefault();
-              console.error("LinkedIn URL missing for profile:", profile.id);
-              alert(`LinkedIn profile URL not available for user ${profile.name} (ID: ${profile.id})`);
+              alert('LinkedIn profile URL not available for this user.');
             }
           }}
         >
           <Linkedin className="h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
-          {linkedinUrl ? "View LinkedIn Profile" : "LinkedIn Profile"}
+          View LinkedIn Profile
         </a>
       </div>
     </div>

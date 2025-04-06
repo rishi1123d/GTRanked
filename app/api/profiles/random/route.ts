@@ -134,25 +134,12 @@ async function getRandomProfiles(excludeIds: number[] = []): Promise<SupabasePro
       return fallbackProfiles;
     }
     
-    // Perform a join with education to get those records too, explicitly including linkedin_url
+    // Perform a join with education to get those records too
     const selectedProfileIds = selectedProfiles.map(profile => profile.id);
     const { data: profilesWithRelations, error: profilesError } = await supabase
       .from('profiles')
       .select(`
-        id,
-        aviato_id,
-        full_name,
-        headline,
-        title,
-        company,
-        major,
-        graduation_year,
-        is_student,
-        elo_rating,
-        location,
-        is_enriched,
-        profile_image_url,
-        linkedin_url,
+        *,
         education:education(*),
         skills:skills(*)
       `)
@@ -378,9 +365,6 @@ export async function GET(request: Request) {
         }
       }
 
-      // Add debug logging for LinkedIn URL
-      console.log(`Profile ${profile.id} LinkedIn URL: ${profile.linkedin_url}`);
-      
       return {
         id: profile.id.toString(),
         name: profile.full_name || "Unknown",
@@ -397,7 +381,6 @@ export async function GET(request: Request) {
         skills, // Now using skills from the database
         experiences, // Using the formatted experiences from both sources
         linkedinUrl: profile.linkedin_url || null, // Include LinkedIn URL if available
-        linkedin_url: profile.linkedin_url || null, // Include the field with original name too
         education: profile.education || [], // Include the full education array
       };
     });
