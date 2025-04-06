@@ -404,6 +404,16 @@ function ProfileDisplay({ profile, showElo = false, eloChange = 0 }: { profile: 
   // Check for LinkedIn URL in different potential properties
   const linkedinUrl = profile.linkedinUrl || (profile as any).linkedin_url;
   
+  // Add debugging log to check LinkedIn URL availability
+  console.log("ProfileDisplay - LinkedIn data:", {
+    profile_id: profile.id,
+    name: profile.name,
+    linkedinUrl: profile.linkedinUrl,
+    linkedin_url: (profile as any).linkedin_url,
+    final_url: linkedinUrl,
+    raw_profile: profile
+  });
+  
   return (
     <div className="space-y-7">
       {/* Profile Header */}

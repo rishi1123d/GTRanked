@@ -365,7 +365,7 @@ export async function GET(request: Request) {
         }
       }
 
-      return {
+      const transformedProfile = {
         id: profile.id.toString(),
         name: profile.full_name || "Unknown",
         title: profile.title || "",
@@ -381,8 +381,14 @@ export async function GET(request: Request) {
         skills, // Now using skills from the database
         experiences, // Using the formatted experiences from both sources
         linkedinUrl: profile.linkedin_url || null, // Include LinkedIn URL if available
+        linkedin_url: profile.linkedin_url || null, // Also include the raw field name for debugging
         education: profile.education || [], // Include the full education array
       };
+      
+      // Log LinkedIn URL for debugging
+      console.log(`Profile ${profile.id} (${profile.full_name}) LinkedIn URL: ${profile.linkedin_url}`);
+      
+      return transformedProfile;
     });
 
     return NextResponse.json({ profiles: transformedProfiles });
