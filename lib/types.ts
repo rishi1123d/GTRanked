@@ -9,11 +9,13 @@ export interface ProfileType {
   isStudent: boolean
   elo: number
   linkedinUrl?: string  // Optional LinkedIn profile URL
+  profileImageUrl?: string  // Optional profile image URL from LinkedIn
   skills: string[]
   experiences: {
     title: string
     company: string
     duration: string
+    companyLogoUrl?: string  // Optional company logo URL from LinkedIn
   }[]
   // Add education field
   education?: {

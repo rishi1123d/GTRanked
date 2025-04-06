@@ -245,6 +245,7 @@ export async function GET(request: Request) {
           title: profile.exp1_title,
           company: profile.exp1_company,
           duration,
+          companyLogoUrl: profile.exp1_company_logo_url || null,
         });
       }
       
@@ -264,6 +265,7 @@ export async function GET(request: Request) {
           title: profile.exp2_title,
           company: profile.exp2_company,
           duration,
+          companyLogoUrl: profile.exp2_company_logo_url || null,
         });
       }
       
@@ -283,6 +285,7 @@ export async function GET(request: Request) {
           title: profile.exp3_title,
           company: profile.exp3_company,
           duration,
+          companyLogoUrl: profile.exp3_company_logo_url || null,
         });
       }
 
@@ -306,6 +309,7 @@ export async function GET(request: Request) {
               title: exp.title || "",
               company: exp.company_name || "",
               duration,
+              companyLogoUrl: exp.company_logo_url || null, // Include company logo URL if available
             };
           });
           
@@ -372,6 +376,7 @@ export async function GET(request: Request) {
         elo: profile.elo_rating,
         location: profile.location || "",
         avatar: `/avatars/${Math.floor(Math.random() * 10) + 1}.png`,
+        profileImageUrl: profile.profile_image_url || null,
         degree,
         skills, // Now using skills from the database
         experiences, // Using the formatted experiences from both sources
