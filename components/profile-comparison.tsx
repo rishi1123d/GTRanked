@@ -419,53 +419,37 @@ function ProfileDisplay({ profile, showElo = false, eloChange = 0 }: { profile: 
       </div>
 
       {/* Honors Section - Show if available */}
-      {profile.achievements?.length > 0 && (
+      {profile.achievements && profile.achievements.length > 0 && (
         <div>
           <h3 className="text-lg font-bold mb-3 text-center border-b pb-2">Honors</h3>
           <div className="space-y-2">
-            {profile.achievements?.slice(0, 2).map((achievement, index) => (
+            {profile.achievements.slice(0, 2).map((achievement, index) => (
               <div key={index} className="text-center">
                 <p className="font-medium text-base">{achievement.title}</p>
                 {achievement.description && <p className="text-sm text-gray-500">{achievement.description}</p>}
               </div>
             ))}
-            {(profile.achievements && profile.achievements.length > 2) && (
+            {profile.achievements.length > 2 && (
               <p className="text-sm text-gray-500 italic text-center">+{profile.achievements.length - 2} more honors</p>
             )}
           </div>
         </div>
       )}
 
-      {/* LinkedIn Button - Modern design */}
-      <div className="pt-3">
-        <a 
-          href="#" 
-          onClick={(e) => e.preventDefault()}
-          className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl font-medium transition-colors shadow-sm"
-        >
-          <Linkedin className="h-5 w-5" />
-          View LinkedIn Profile
-        </a>
-      </div>
-
-      {/* LinkedIn button and Vote button */}
-      <div className="mt-auto space-y-3">
-        {profile.linkedinUrl && (
+      {/* LinkedIn Button - Using the preferred design with working functionality */}
+      {profile.linkedinUrl && (
+        <div className="pt-3">
           <a 
-            href={profile.linkedinUrl} 
+            href={profile.linkedinUrl}
             target="_blank" 
-            rel="noopener noreferrer" 
-            className="w-full inline-flex justify-center items-center gap-2 py-2.5 px-4 border border-blue-600 rounded-xl text-blue-600 font-medium hover:bg-blue-50 transition-colors"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl font-medium transition-colors shadow-sm"
           >
-            {/* Simple LinkedIn icon */}
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-              <path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5v-9h3zM6.5 8.25A1.75 1.75 0 118.3 6.5a1.78 1.78 0 01-1.8 1.75zM19 19h-3v-4.74c0-1.42-.6-1.93-1.38-1.93A1.74 1.74 0 0013 14.19a.66.66 0 000 .14V19h-3v-9h2.9v1.3a3.11 3.11 0 012.7-1.4c1.55 0 3.36.86 3.36 3.66z"></path>
-            </svg>
+            <Linkedin className="h-5 w-5" />
             View LinkedIn Profile
           </a>
-        )}
-        
-      </div>
+        </div>
+      )}
     </div>
   )
 }
