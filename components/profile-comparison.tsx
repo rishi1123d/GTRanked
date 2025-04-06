@@ -87,9 +87,9 @@ export function ProfileComparison({
   
   // Start countdown when results are shown and trigger prefetch
   useEffect(() => {
-    // Only start countdown if the user has made a prediction (voted)
-    // This ensures we don't automatically navigate without user interaction
-    if (showResults && countdown > 0 && prediction !== null) {
+    // Start countdown whenever results are shown (including when "Equal" is selected)
+    // The internalShowResults flag ensures user interaction has happened
+    if (showResults && countdown > 0) {
       // Start prefetching when the countdown begins (and we don't already have prefetched profiles)
       if (!nextProfiles && !prefetchingRef.current && countdown === 5) {
         prefetchNextProfiles();
@@ -117,7 +117,7 @@ export function ProfileComparison({
         timerRef.current = null;
       }
     };
-  }, [showResults, countdown, nextProfiles, prediction]);
+  }, [showResults, countdown, nextProfiles]);
 
   const updateEloRatings = (winnerId: string | null) => {
     if (winnerId === null) return; // No ELO changes for ties
