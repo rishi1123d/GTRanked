@@ -401,6 +401,18 @@ function ProfileDisplay({ profile, showElo = false, eloChange = 0 }: { profile: 
     education_count: profile.education ? profile.education.length : 0
   });
   
+  // Check for LinkedIn URL in different potential properties
+  const linkedinUrl = profile.linkedinUrl || (profile as any).linkedin_url;
+  
+  // Debug logging for LinkedIn URL
+  console.log("Profile LinkedIn URL Debug:", {
+    id: profile.id,
+    name: profile.name,
+    linkedinUrl: profile.linkedinUrl,
+    linkedin_url: (profile as any).linkedin_url,
+    finalUrl: linkedinUrl
+  });
+  
   return (
     <div className="space-y-7">
       {/* Profile Header */}
@@ -549,20 +561,26 @@ function ProfileDisplay({ profile, showElo = false, eloChange = 0 }: { profile: 
         </div>
       )}
 
-      {/* LinkedIn Button - Only shown when a direct LinkedIn URL exists */}
-      {profile.linkedinUrl && (
-        <div className="pt-4">
-          <a 
-            href={profile.linkedinUrl}
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="group flex items-center justify-center gap-2 w-full py-3 px-4 bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 hover:from-blue-100 hover:to-blue-200 rounded-xl font-medium transition-all duration-300 shadow-sm hover:shadow-md transform hover:translate-y-[-2px]"
-          >
-            <Linkedin className="h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
-            View LinkedIn Profile
-          </a>
-        </div>
-      )}
+      {/* LinkedIn Button */}
+      <div className="pt-4">
+        <a 
+          href={linkedinUrl || '#'}
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="group flex items-center justify-center gap-2 w-full py-3 px-4 bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 hover:from-blue-100 hover:to-blue-200 rounded-xl font-medium transition-all duration-300 shadow-sm hover:shadow-md transform hover:translate-y-[-2px]"
+          onClick={(e) => {
+            // Prevent navigation if no URL is available
+            if (!linkedinUrl) {
+              e.preventDefault();
+              console.error("LinkedIn URL missing for profile:", profile.id);
+              alert(`LinkedIn profile URL not available for user ${profile.name} (ID: ${profile.id})`);
+            }
+          }}
+        >
+          <Linkedin className="h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
+          {linkedinUrl ? "View LinkedIn Profile" : "LinkedIn Profile"}
+        </a>
+      </div>
     </div>
   )
 }
