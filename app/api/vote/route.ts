@@ -1,46 +1,83 @@
-import { NextResponse } from "next/server"
-import { calculateElo } from "@/lib/elo"
-import { mockProfiles } from "@/lib/mock-data"
+import { NextResponse } from "next/server";
+import { recordVote, getProfileById } from "@/lib/profiles";
 
 export async function POST(request: Request) {
   try {
-    const { winnerId, loserId } = await request.json()
+    const { winnerId, loserId, sessionId } = await request.json();
 
-    // Find profiles
-    const winnerProfile = mockProfiles.find((p) => p.id === winnerId)
-    const loserProfile = mockProfiles.find((p) => p.id === loserId)
-
-    if (!winnerProfile || !loserProfile) {
-      return NextResponse.json({ error: "One or both profiles not found" }, { status: 404 })
+    if (!sessionId) {
+      return NextResponse.json(
+        { error: "Session ID is required" },
+        { status: 400 }
+      );
     }
 
-    // Calculate new ELO ratings
-    const newRatings = calculateElo(winnerProfile.elo, loserProfile.elo)
+    // Convert IDs to numbers (they come as strings from frontend)
+    const winnerIdNum = winnerId ? parseInt(winnerId, 10) : null;
+    const loserIdNum = parseInt(loserId, 10);
 
-    // Update mock profiles (in a real app, this would update a database)
-    winnerProfile.elo = newRatings.winner
-    loserProfile.elo = newRatings.loser
+    // For ties, winnerId will be null
+    const leftProfileId = winnerIdNum || loserIdNum;
+    const rightProfileId =
+      winnerIdNum === leftProfileId ? loserIdNum : leftProfileId;
 
-    // In a real implementation, you would save these changes to a database
+    // Record the vote in Supabase
+    // This will trigger the ELO update function automatically
+    await recordVote(leftProfileId, rightProfileId, winnerIdNum, sessionId);
+
+    // Get the updated profiles to return the new ELO ratings
+    const leftProfile = await getProfileById(leftProfileId);
+    const rightProfile = await getProfileById(rightProfileId);
+
+    if (!leftProfile || !rightProfile) {
+      return NextResponse.json(
+        { error: "One or both profiles not found" },
+        { status: 404 }
+      );
+    }
+
+    // In case of a tie, both are considered neither winner nor loser
+    if (winnerIdNum === null) {
+      return NextResponse.json({
+        success: true,
+        tie: true,
+        profiles: [
+          {
+            id: leftProfile.id.toString(),
+            name: leftProfile.full_name,
+            elo: leftProfile.elo_rating,
+          },
+          {
+            id: rightProfile.id.toString(),
+            name: rightProfile.full_name,
+            elo: rightProfile.elo_rating,
+          },
+        ],
+      });
+    }
+
+    // Determine which is winner and which is loser
+    const winner = winnerIdNum === leftProfile.id ? leftProfile : rightProfile;
+    const loser = winnerIdNum === leftProfile.id ? rightProfile : leftProfile;
 
     return NextResponse.json({
       success: true,
       winner: {
-        id: winnerProfile.id,
-        name: winnerProfile.name,
-        newElo: newRatings.winner,
-        eloDiff: newRatings.winner - winnerProfile.elo,
+        id: winner.id.toString(),
+        name: winner.full_name,
+        elo: winner.elo_rating,
       },
       loser: {
-        id: loserProfile.id,
-        name: loserProfile.name,
-        newElo: newRatings.loser,
-        eloDiff: newRatings.loser - loserProfile.elo,
+        id: loser.id.toString(),
+        name: loser.full_name,
+        elo: loser.elo_rating,
       },
-    })
+    });
   } catch (error) {
-    console.error("Error processing vote:", error)
-    return NextResponse.json({ error: "Failed to process vote" }, { status: 500 })
+    console.error("Error processing vote:", error);
+    return NextResponse.json(
+      { error: "Failed to process vote" },
+      { status: 500 }
+    );
   }
 }
-

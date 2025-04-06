@@ -1,19 +1,30 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Search, ArrowUpDown, ExternalLink, Info, Trophy } from "lucide-react"
-import { mockProfiles } from "@/lib/mock-data"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { useState } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Search, ArrowUpDown, ExternalLink, Info, Trophy } from "lucide-react";
+import { mockProfiles } from "@/lib/mock-data";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export default function LeaderboardPage() {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [sortBy, setSortBy] = useState("elo")
-  const [filterBy, setFilterBy] = useState("all")
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState("elo");
+  const [filterBy, setFilterBy] = useState("all");
 
   // Sort and filter profiles
   const sortedProfiles = [...mockProfiles]
@@ -24,23 +35,23 @@ export default function LeaderboardPage() {
           profile.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           profile.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
           profile.company.toLowerCase().includes(searchQuery.toLowerCase())
-        )
+        );
       }
 
       // Filter by category
-      if (filterBy === "all") return true
-      if (filterBy === "students") return profile.isStudent
-      if (filterBy === "alumni") return !profile.isStudent
-      if (filterBy === "cs") return profile.major === "Computer Science"
+      if (filterBy === "all") return true;
+      if (filterBy === "students") return profile.isStudent;
+      if (filterBy === "alumni") return !profile.isStudent;
+      if (filterBy === "cs") return profile.major === "Computer Science";
 
-      return true
+      return true;
     })
     .sort((a, b) => {
-      if (sortBy === "elo") return b.elo - a.elo
-      if (sortBy === "name") return a.name.localeCompare(b.name)
-      if (sortBy === "graduation") return a.graduationYear - b.graduationYear
-      return 0
-    })
+      if (sortBy === "elo") return b.elo - a.elo;
+      if (sortBy === "name") return a.name.localeCompare(b.name);
+      if (sortBy === "graduation") return a.graduationYear - b.graduationYear;
+      return 0;
+    });
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
@@ -82,7 +93,8 @@ export default function LeaderboardPage() {
               GT Ranked Leaderboard
             </h1>
             <p className="text-gray-600 max-w-xl">
-              Browse the top-ranked Georgia Tech students and alumni based on ELO ratings.
+              Browse the top-ranked Georgia Tech students and alumni based on
+              ELO ratings.
             </p>
           </div>
 
@@ -95,15 +107,20 @@ export default function LeaderboardPage() {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="outline" size="icon" className="h-9 w-9 rounded-full">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-9 w-9 rounded-full"
+                  >
                     <Info className="h-4 w-4" />
                     <span className="sr-only">ELO Info</span>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent className="bg-white rounded-xl p-3 shadow-lg border border-gray-100 max-w-xs">
                   <p className="text-sm text-gray-600">
-                    ELO is a rating system that calculates relative skill levels. Higher ELO indicates a stronger
-                    profile based on community votes.
+                    ELO is a rating system that calculates relative skill
+                    levels. Higher ELO indicates a stronger profile based on
+                    community votes.
                   </p>
                 </TooltipContent>
               </Tooltip>
@@ -115,7 +132,10 @@ export default function LeaderboardPage() {
           <div className="bg-white/90 backdrop-blur-sm rounded-full py-2 px-4 text-sm text-gray-600 flex items-center gap-2 shadow-sm">
             <span className="text-xs">🚀</span>
             <span>Data powered by Aviato</span>
-            <Link href="#" className="text-yellow-600 ml-1 flex items-center hover:underline">
+            <Link
+              href="#"
+              className="text-yellow-600 ml-1 flex items-center hover:underline"
+            >
               Learn more here →
             </Link>
           </div>
@@ -161,11 +181,21 @@ export default function LeaderboardPage() {
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="grid grid-cols-12 gap-4 p-4 font-medium text-sm text-gray-500 border-b">
               <div className="col-span-1 flex items-center">Rank</div>
-              <div className="col-span-5 md:col-span-3 lg:col-span-2 flex items-center">Name</div>
-              <div className="hidden md:flex md:col-span-3 lg:col-span-4 items-center">Education/Position</div>
-              <div className="hidden md:flex md:col-span-3 lg:col-span-3 items-center">Experience</div>
+              <div className="col-span-5 md:col-span-3 lg:col-span-2 flex items-center">
+                Name
+              </div>
+              <div className="hidden md:flex md:col-span-3 lg:col-span-4 items-center">
+                Education/Position
+              </div>
+              <div className="hidden md:flex md:col-span-3 lg:col-span-3 items-center">
+                Experience
+              </div>
               <div className="col-span-6 md:col-span-2 lg:col-span-2 flex items-center justify-end">
-                <Button variant="ghost" size="sm" className="h-8 gap-1 rounded-full">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 gap-1 rounded-full"
+                >
                   ELO <ArrowUpDown className="h-3 w-3" />
                 </Button>
               </div>
@@ -176,19 +206,27 @@ export default function LeaderboardPage() {
                 key={profile.id}
                 className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-gray-50 transition-colors border-b last:border-0"
               >
-                <div className="col-span-1 font-semibold text-gray-500">{index + 1}</div>
+                <div className="col-span-1 font-semibold text-gray-500">
+                  {index + 1}
+                </div>
                 <div className="col-span-5 md:col-span-3 lg:col-span-2 flex items-center gap-3">
                   <Avatar className="bg-gradient-to-br from-indigo-400 to-purple-500">
-                    <AvatarFallback className="text-white font-light">{profile.name.charAt(0)}</AvatarFallback>
+                    <AvatarFallback className="text-white font-light">
+                      {profile.name.charAt(0)}
+                    </AvatarFallback>
                   </Avatar>
                   <div>
                     <p className="font-medium">{profile.name}</p>
-                    <p className="text-xs text-gray-500">{profile.graduationYear}</p>
+                    <p className="text-xs text-gray-500">
+                      {profile.graduationYear}
+                    </p>
                   </div>
                 </div>
                 <div className="hidden md:block md:col-span-3 lg:col-span-4">
                   <p className="font-medium">{profile.major}</p>
-                  <p className="text-sm text-gray-500">{profile.isStudent ? "Student" : "Alumni"}</p>
+                  <p className="text-sm text-gray-500">
+                    {profile.isStudent ? "Student" : "Alumni"}
+                  </p>
                 </div>
                 <div className="hidden md:block md:col-span-3 lg:col-span-3">
                   <p className="font-medium">{profile.title}</p>
@@ -196,7 +234,11 @@ export default function LeaderboardPage() {
                 </div>
                 <div className="col-span-6 md:col-span-2 lg:col-span-2 text-right">
                   <p className="font-bold text-yellow-600">{profile.elo}</p>
-                  <Button variant="ghost" size="sm" className="h-6 text-xs rounded-full">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs rounded-full"
+                  >
                     View Profile <ExternalLink className="ml-1 h-3 w-3" />
                   </Button>
                 </div>
@@ -213,28 +255,39 @@ export default function LeaderboardPage() {
               <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-yellow-600 to-yellow-800 mb-1">
                 GT Ranked
               </span>
-              <p className="text-sm text-gray-500">Ranking Georgia Tech's network using the ELO system</p>
+              <p className="text-sm text-gray-500">
+                Ranking Georgia Tech's network using the ELO system
+              </p>
             </div>
 
             <div className="flex gap-6">
-              <Link href="/" className="text-sm text-gray-500 hover:text-yellow-600">
+              <Link
+                href="/"
+                className="text-sm text-gray-500 hover:text-yellow-600"
+              >
                 Home
               </Link>
-              <Link href="/vote" className="text-sm text-gray-500 hover:text-yellow-600">
+              <Link
+                href="/vote"
+                className="text-sm text-gray-500 hover:text-yellow-600"
+              >
                 Vote
               </Link>
-              <Link href="/leaderboard" className="text-sm text-gray-500 hover:text-yellow-600">
+              <Link
+                href="/leaderboard"
+                className="text-sm text-gray-500 hover:text-yellow-600"
+              >
                 Leaderboard
               </Link>
             </div>
 
             <p className="text-xs text-gray-400">
-              &copy; {new Date().getFullYear()} GT Ranked. Data powered by Aviato API
+              &copy; {new Date().getFullYear()} GT Ranked. Data powered by
+              Aviato API
             </p>
           </div>
         </div>
       </footer>
     </div>
-  )
+  );
 }
-
