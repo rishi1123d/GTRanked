@@ -3,5 +3,3 @@ env
 .env.local
 venv
 .next/
-
-.next/

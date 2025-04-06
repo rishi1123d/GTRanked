@@ -45,12 +45,6 @@ export async function GET(request: Request) {
 
     // Transform profiles to match frontend format
     const transformedProfiles = detailedProfiles.map((profile: any) => {
-<<<<<<< HEAD
-      // Format experiences
-      const experiences = profile.experience
-        ? profile.experience.map((exp: any) => {
-            // Format the duration (e.g., "2022 - Present")
-=======
       // Get experiences from both direct profile fields and experience table
       const experiences = [];
       
@@ -117,7 +111,6 @@ export async function GET(request: Request) {
         // Start at index 0 if we don't have any direct experiences, otherwise add to the existing ones
         const additionalExperiences = profile.experience
           .map((exp: any) => {
->>>>>>> workingdb
             const startYear = exp.start_date
               ? new Date(exp.start_date).getFullYear()
               : "";
@@ -134,9 +127,6 @@ export async function GET(request: Request) {
               company: exp.company_name || "",
               duration,
             };
-<<<<<<< HEAD
-          })
-=======
           });
           
         // Add any experiences that aren't already included (avoid duplicates)
@@ -153,7 +143,6 @@ export async function GET(request: Request) {
       // Get skills from skills table
       const skills = profile.skills 
         ? profile.skills.map((skill: any) => skill.name || "")
->>>>>>> workingdb
         : [];
 
       // Get degree from education if available
@@ -161,8 +150,6 @@ export async function GET(request: Request) {
         profile.education && profile.education.length > 0
           ? profile.education[0].degree || "BS"
           : "BS";
-<<<<<<< HEAD
-=======
           
       // Extract major from headline if it's not available in the profile
       let major = profile.major || "";
@@ -193,32 +180,22 @@ export async function GET(request: Request) {
           major = parts[1];
         }
       }
->>>>>>> workingdb
 
       return {
         id: profile.id.toString(),
         name: profile.full_name || "Unknown",
         title: profile.title || "",
         company: profile.company || "",
-<<<<<<< HEAD
-        major: profile.major || "Unknown",
-=======
         major: major || "Unknown Major",
->>>>>>> workingdb
         graduationYear: profile.graduation_year || 0,
         isStudent: profile.is_student,
         elo: profile.elo_rating,
         location: profile.location || "",
         avatar: `/avatars/${Math.floor(Math.random() * 10) + 1}.png`,
         degree,
-<<<<<<< HEAD
-        skills: [], // Not in database
-        experiences, // Use the formatted experiences
-=======
         skills, // Now using skills from the database
         experiences, // Using the formatted experiences from both sources
         linkedinUrl: profile.linkedin_url || null, // Include LinkedIn URL if available
->>>>>>> workingdb
       };
     });
 
