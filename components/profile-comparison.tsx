@@ -549,18 +549,20 @@ function ProfileDisplay({ profile, showElo = false, eloChange = 0 }: { profile: 
         </div>
       )}
 
-      {/* LinkedIn Button - Always shown with a fallback URL if no LinkedIn URL exists */}
-      <div className="pt-4">
-        <a 
-          href={profile.linkedinUrl || `https://linkedin.com/search/results/people/?keywords=${encodeURIComponent(profile.name)}`}
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="group flex items-center justify-center gap-2 w-full py-3 px-4 bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 hover:from-blue-100 hover:to-blue-200 rounded-xl font-medium transition-all duration-300 shadow-sm hover:shadow-md transform hover:translate-y-[-2px]"
-        >
-          <Linkedin className="h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
-          {profile.linkedinUrl ? "View LinkedIn Profile" : "Find on LinkedIn"}
-        </a>
-      </div>
+      {/* LinkedIn Button - Only shown when a direct LinkedIn URL exists */}
+      {profile.linkedinUrl && (
+        <div className="pt-4">
+          <a 
+            href={profile.linkedinUrl}
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="group flex items-center justify-center gap-2 w-full py-3 px-4 bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 hover:from-blue-100 hover:to-blue-200 rounded-xl font-medium transition-all duration-300 shadow-sm hover:shadow-md transform hover:translate-y-[-2px]"
+          >
+            <Linkedin className="h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
+            View LinkedIn Profile
+          </a>
+        </div>
+      )}
     </div>
   )
 }
