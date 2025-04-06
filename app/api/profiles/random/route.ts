@@ -13,6 +13,26 @@ interface SupabaseProfile {
   is_student: boolean;
   elo_rating: number;
   location?: string;
+  profile_image_url?: string;
+  linkedin_url?: string;
+  exp1_title?: string;
+  exp1_company?: string;
+  exp1_start_date?: string;
+  exp1_end_date?: string;
+  exp1_is_current: boolean;
+  exp1_company_logo_url?: string;
+  exp2_title?: string;
+  exp2_company?: string;
+  exp2_start_date?: string;
+  exp2_end_date?: string;
+  exp2_is_current: boolean;
+  exp2_company_logo_url?: string;
+  exp3_title?: string;
+  exp3_company?: string;
+  exp3_start_date?: string;
+  exp3_end_date?: string;
+  exp3_is_current: boolean;
+  exp3_company_logo_url?: string;
   [key: string]: any; // Allow for other fields
 }
 
@@ -65,6 +85,7 @@ export async function GET(request: Request) {
           title: profile.exp1_title,
           company: profile.exp1_company,
           duration,
+          companyLogoUrl: profile.exp1_company_logo_url || null,
         });
       }
       
@@ -84,6 +105,7 @@ export async function GET(request: Request) {
           title: profile.exp2_title,
           company: profile.exp2_company,
           duration,
+          companyLogoUrl: profile.exp2_company_logo_url || null,
         });
       }
       
@@ -103,6 +125,7 @@ export async function GET(request: Request) {
           title: profile.exp3_title,
           company: profile.exp3_company,
           duration,
+          companyLogoUrl: profile.exp3_company_logo_url || null,
         });
       }
 
@@ -126,6 +149,7 @@ export async function GET(request: Request) {
               title: exp.title || "",
               company: exp.company_name || "",
               duration,
+              companyLogoUrl: exp.company_logo_url || null, // Include company logo URL if available
             };
           });
           
@@ -192,6 +216,7 @@ export async function GET(request: Request) {
         elo: profile.elo_rating,
         location: profile.location || "",
         avatar: `/avatars/${Math.floor(Math.random() * 10) + 1}.png`,
+        profileImageUrl: profile.profile_image_url || null,
         degree,
         skills, // Now using skills from the database
         experiences, // Using the formatted experiences from both sources

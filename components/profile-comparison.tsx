@@ -339,7 +339,11 @@ function ProfileDisplay({ profile, showElo = false, eloChange = 0 }: { profile: 
       {/* Profile Header */}
       <div className="flex flex-col items-center">
         <Avatar className="h-24 w-24 sm:h-28 sm:w-28 bg-gradient-to-br from-indigo-400 to-purple-500 shadow-md mb-4">
-          <AvatarFallback className="text-xl sm:text-2xl text-white font-light">{profile.name.charAt(0)}</AvatarFallback>
+          {profile.profileImageUrl ? (
+            <img src={profile.profileImageUrl} alt={profile.name} className="h-full w-full object-cover" />
+          ) : (
+            <AvatarFallback className="text-xl sm:text-2xl text-white font-light">{profile.name.charAt(0)}</AvatarFallback>
+          )}
         </Avatar>
         
         <h3 className="text-xl sm:text-2xl md:text-3xl font-bold mb-1">{profile.name}</h3>
@@ -375,7 +379,7 @@ function ProfileDisplay({ profile, showElo = false, eloChange = 0 }: { profile: 
         <div className="space-y-4">
           {profile.experiences.slice(0, 3).map((exp, index) => (
             <div key={index} className="flex items-start gap-3">
-              <CompanyLogo company={exp.company} />
+              <CompanyLogo company={exp.company} logoUrl={exp.companyLogoUrl} />
               <div>
                 <p className="font-semibold text-base sm:text-lg">{exp.title}</p>
                 <p className="text-gray-600">{exp.company}</p>
@@ -454,8 +458,8 @@ function ProfileDisplay({ profile, showElo = false, eloChange = 0 }: { profile: 
   )
 }
 
-function CompanyLogo({ company }: { company: string }) {
-  // Map company names to colors for the logo background
+function CompanyLogo({ company, logoUrl }: { company: string, logoUrl?: string }) {
+  // Map company names to colors for the logo background (fallback)
   const colorMap: Record<string, string> = {
     Google: "bg-gradient-to-br from-blue-400 to-blue-600",
     Microsoft: "bg-gradient-to-br from-green-400 to-green-600",
@@ -481,10 +485,16 @@ function CompanyLogo({ company }: { company: string }) {
 
   return (
     <div
-      className={`w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center text-white font-bold text-xs shadow-sm ${bgColor}`}
+      className={`w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center text-white font-bold text-xs shadow-sm overflow-hidden ${!logoUrl ? bgColor : 'bg-white'}`}
     >
-      {company.charAt(0)}
-      {company.split(" ")[1]?.[0] || ""}
+      {logoUrl ? (
+        <img src={logoUrl} alt={company} className="h-full w-full object-contain" />
+      ) : (
+        <>
+          {company.charAt(0)}
+          {company.split(" ")[1]?.[0] || ""}
+        </>
+      )}
     </div>
   )
 }

@@ -34,6 +34,9 @@ const aviato = {
     }
 
     return await response.json();
+  },
+  async getProfileByUrl(url) {
+    // Implementation of getProfileByUrl method
   }
 };
 
@@ -129,7 +132,8 @@ async function fetchAndStoreGTProfiles(limit = 5) {
           elo_rating: 1500, // Default ELO rating
           linkedin_url: linkedinUrl,
           twitter_url: twitterUrl,
-          github_url: githubUrl
+          github_url: githubUrl,
+          profile_image_url: profile.profilePicture || profile.pictureUrl || null
         }, { onConflict: 'aviato_id' })
         .select('id');
 
@@ -182,7 +186,8 @@ async function fetchAndStoreGTProfiles(limit = 5) {
               title: position,
               start_date: exp.startDate || null,
               end_date: exp.endDate || null,
-              is_current: exp.endDate === null
+              is_current: exp.endDate === null,
+              company_logo_url: exp.companyLogo || exp.logoUrl || null
             });
 
           if (expError) {
@@ -197,6 +202,39 @@ async function fetchAndStoreGTProfiles(limit = 5) {
   } catch (error) {
     console.error('Error fetching and storing profiles:', error);
     throw error;
+  }
+}
+
+export async function updateProfileImages() {
+  // Get profiles without images
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, linkedin_url')
+    .is('profile_image_url', null);
+    
+  for (const profile of profiles) {
+    if (profile.linkedin_url) {
+      try {
+        // Fetch fresh data from Aviato
+        const linkedinData = await aviato.getProfileByUrl(profile.linkedin_url);
+        
+        // Update just the image URL
+        await supabase
+          .from('profiles')
+          .update({ 
+            profile_image_url: linkedinData.profilePicture || null,
+            // Add more fields you want to update here
+          })
+          .eq('id', profile.id);
+          
+        console.log(`Updated profile image for ID ${profile.id}`);
+      } catch (error) {
+        console.error(`Failed to update profile ${profile.id}:`, error);
+      }
+      
+      // Avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
   }
 }
 
