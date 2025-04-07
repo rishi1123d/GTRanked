@@ -3,9 +3,10 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Rocket, Trophy, Vote } from "lucide-react";
+import { Rocket, Trophy, Vote, Loader2 } from "lucide-react";
 import { ProfileComparison } from "@/components/profile-comparison";
 import { v4 as uuidv4 } from "uuid";
+import { motion, AnimatePresence } from "framer-motion";
 
 // Add a declaration for uuid
 declare module 'uuid';
@@ -196,18 +197,6 @@ export default function VotePage() {
     }
   }, []);
 
-  // If we're still loading, show a loading state
-  if (isLoading || !leftProfile || !rightProfile) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin h-10 w-10 border-4 border-yellow-500 rounded-full border-t-transparent mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading profiles...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <header className="sticky top-0 z-50 backdrop-blur-md bg-white/80 border-b">
@@ -242,7 +231,12 @@ export default function VotePage() {
       </header>
 
       <div className="container py-8 px-4 md:px-6 max-w-full w-full">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8 max-w-[1920px] mx-auto">
+        <motion.div 
+          className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8 max-w-[1920px] mx-auto"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
           <div>
             <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-yellow-600 to-yellow-800 mb-2">
               Who has the stronger profile?
@@ -253,15 +247,24 @@ export default function VotePage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3 bg-white rounded-full px-4 py-2 shadow-sm">
+          <motion.div 
+            className="flex items-center gap-3 bg-white rounded-full px-4 py-2 shadow-md"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
             <Vote className="h-5 w-5 text-yellow-600" />
             <span className="font-medium">{votesCount}</span>
             <span className="text-gray-500">votes cast</span>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
-        <div className="flex justify-center mb-8 max-w-[1920px] mx-auto">
-          <div className="bg-white/90 backdrop-blur-sm rounded-full py-2 px-4 text-sm text-gray-600 flex items-center gap-2 shadow-sm">
+        <motion.div 
+          className="flex justify-center mb-8 max-w-[1920px] mx-auto"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+        >
+          <div className="bg-white/90 backdrop-blur-sm rounded-full py-2 px-4 text-sm text-gray-600 flex items-center gap-2 shadow-md">
             <Rocket className="h-4 w-4 text-yellow-600" />
             <span>Data powered by Aviato</span>
             <Link
@@ -271,59 +274,119 @@ export default function VotePage() {
               Learn more here →
             </Link>
           </div>
-        </div>
+        </motion.div>
 
         <div className="mb-12 max-w-[1920px] mx-auto">
-          <ProfileComparison
-            leftProfile={leftProfile}
-            rightProfile={rightProfile}
-            onVote={handleVote}
-            showResults={isPredicting}
-            onNextComparison={handleNextComparison}
-          />
+          <AnimatePresence mode="wait">
+            {isLoading ? (
+              <motion.div 
+                className="flex items-center justify-center min-h-[60vh]"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                key="loading"
+              >
+                <div className="text-center space-y-4">
+                  <div className="relative inline-flex">
+                    <Loader2 className="h-12 w-12 text-yellow-500 animate-spin" />
+                    <div className="absolute inset-0 h-12 w-12 rounded-full border-t-2 border-yellow-500 animate-ping opacity-20"></div>
+                  </div>
+                  <p className="text-gray-600 font-medium">Loading profiles...</p>
+                  <p className="text-gray-400 text-sm">Finding the next match for you</p>
+                </div>
+              </motion.div>
+            ) : leftProfile && rightProfile ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                key="comparison"
+              >
+                <ProfileComparison
+                  leftProfile={leftProfile}
+                  rightProfile={rightProfile}
+                  onVote={handleVote}
+                  showResults={isPredicting}
+                  onNextComparison={handleNextComparison}
+                />
+              </motion.div>
+            ) : (
+              <motion.div 
+                className="flex items-center justify-center min-h-[60vh]"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                key="error"
+              >
+                <div className="text-center space-y-2">
+                  <p className="text-gray-600 font-medium">No profiles available</p>
+                  <Button 
+                    onClick={() => getNewProfiles()} 
+                    variant="outline"
+                    className="mt-4"
+                  >
+                    Try Again
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {votingHistory.length > 0 && (
-          <div className="max-w-[1920px] mx-auto">
+          <motion.div 
+            className="max-w-[1920px] mx-auto"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
             <div className="flex items-center gap-2 mb-4">
               <Trophy className="h-5 w-5 text-yellow-600" />
               <h2 className="text-xl font-bold">Your Recent Votes</h2>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
               <div className="divide-y divide-gray-100">
-                {votingHistory.slice(0, 5).map((vote, index) => (
-                  <div
-                    key={index}
-                    className="p-4 hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">
-                            {vote.left_profile_name}
-                          </span>
-                          <span className="text-gray-400">vs</span>
-                          <span className="font-medium">
-                            {vote.right_profile_name}
-                          </span>
+                <AnimatePresence>
+                  {votingHistory.slice(0, 5).map((vote, index) => (
+                    <motion.div
+                      key={vote.created_at + index}
+                      className="p-4 hover:bg-gray-50 transition-colors"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ 
+                        opacity: 1, 
+                        y: 0,
+                        transition: { delay: index * 0.1 }
+                      }}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">
+                              {vote.left_profile_name}
+                            </span>
+                            <span className="text-gray-400">vs</span>
+                            <span className="font-medium">
+                              {vote.right_profile_name}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-500">
+                            {vote.winner_id
+                              ? `You voted for ${vote.winner_name}`
+                              : "You voted Equal"}
+                          </p>
                         </div>
-                        <p className="text-sm text-gray-500">
-                          {vote.winner_id
-                            ? `You voted for ${vote.winner_name}`
-                            : "You voted Equal"}
-                        </p>
+                        <div className="text-xs text-gray-500">
+                          {new Intl.DateTimeFormat("en-US", {
+                            hour: "numeric",
+                            minute: "numeric",
+                            hour12: true,
+                          }).format(new Date(vote.created_at))}
+                        </div>
                       </div>
-                      <div className="text-xs text-gray-500">
-                        {new Intl.DateTimeFormat("en-US", {
-                          hour: "numeric",
-                          minute: "numeric",
-                          hour12: true,
-                        }).format(new Date(vote.created_at))}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               </div>
 
               {votingHistory.length > 5 && (
@@ -334,11 +397,11 @@ export default function VotePage() {
                 </div>
               )}
             </div>
-          </div>
+          </motion.div>
         )}
       </div>
 
-      <footer className="mt-auto border-t py-8">
+      <footer className="mt-auto border-t py-8 bg-white">
         <div className="container px-4 md:px-6 max-w-full">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 max-w-[1920px] mx-auto">
             <div className="flex flex-col items-center md:items-start">

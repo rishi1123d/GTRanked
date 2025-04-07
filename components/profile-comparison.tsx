@@ -2,9 +2,11 @@
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import type { ProfileType } from "@/lib/types"
-import { ChevronRight, CheckCircle2, XCircle, TrendingUp, TrendingDown, Linkedin } from "lucide-react"
+import { ChevronRight, CheckCircle2, XCircle, TrendingUp, TrendingDown, Linkedin, ChevronDown } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
 import { calculateEloWithOutcome } from "@/lib/elo"
+import { motion, AnimatePresence } from "framer-motion"
+import { EmojiRain } from "./emoji-rain"
 
 interface ProfileComparisonProps {
   leftProfile: ProfileType
@@ -27,6 +29,14 @@ export function ProfileComparison({
   const [leftProfileLocal, setLeftProfileLocal] = useState<ProfileType>(leftProfile);
   const [rightProfileLocal, setRightProfileLocal] = useState<ProfileType>(rightProfile);
   const [eloChanges, setEloChanges] = useState<{left: number, right: number}>({left: 0, right: 0});
+  
+  // Update to track emoji type for each profile
+  const [leftEmojiType, setLeftEmojiType] = useState<'winner' | 'loser' | null>(null);
+  const [rightEmojiType, setRightEmojiType] = useState<'winner' | 'loser' | null>(null);
+  const [showEmojis, setShowEmojis] = useState(false);
+  
+  const [hasVoted, setHasVoted] = useState(false);
+  
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const [nextProfiles, setNextProfiles] = useState<{ leftProfile: ProfileType, rightProfile: ProfileType } | null>(null);
   const prefetchingRef = useRef(false);
@@ -78,6 +88,10 @@ export function ProfileComparison({
       setLeftProfileLocal(leftProfile);
       setRightProfileLocal(rightProfile);
       setEloChanges({left: 0, right: 0});
+      setLeftEmojiType(null);
+      setRightEmojiType(null);
+      setShowEmojis(false);
+      setHasVoted(false);
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
@@ -159,12 +173,39 @@ export function ProfileComparison({
     const leftChange = result.playerA - leftRating;
     const rightChange = result.playerB - rightRating;
     setEloChanges({left: leftChange, right: rightChange});
+    
+    // Determine which emoji animations to show based on final ELO scores
+    const leftElo = result.playerA;
+    const rightElo = result.playerB;
+    
+    // Show emojis after a short delay
+    setTimeout(() => {
+      if (leftElo > rightElo) {
+        // Left profile has higher ELO - show laughing emoji
+        // Right profile has lower ELO - show skull emoji
+        setLeftEmojiType('winner');
+        setRightEmojiType('loser');
+        setShowEmojis(true);
+      } else if (rightElo > leftElo) {
+        // Right profile has higher ELO - show laughing emoji
+        // Left profile has lower ELO - show skull emoji
+        setLeftEmojiType('loser');
+        setRightEmojiType('winner');
+        setShowEmojis(true);
+      } else {
+        // Equal ELO, don't show emojis
+        setLeftEmojiType(null);
+        setRightEmojiType(null);
+        setShowEmojis(false);
+      }
+    }, 500);
   };
   
   const handlePrediction = (profileId: string | null) => {
     setPrediction(profileId);
     setInternalShowResults(true);
     setCountdown(5);
+    setHasVoted(true);
     
     // Update ELO ratings locally
     updateEloRatings(profileId);
@@ -226,6 +267,10 @@ export function ProfileComparison({
       setPrediction(null);
       setCountdown(5);
       setEloChanges({left: 0, right: 0});
+      setLeftEmojiType(null);
+      setRightEmojiType(null);
+      setShowEmojis(false);
+      setHasVoted(false);
     } else {
       // Fall back to regular behavior if prefetched profiles aren't available
       if (onNextComparison) {
@@ -236,6 +281,10 @@ export function ProfileComparison({
         setPrediction(null);
         setCountdown(5);
         setEloChanges({left: 0, right: 0});
+        setLeftEmojiType(null);
+        setRightEmojiType(null);
+        setShowEmojis(false);
+        setHasVoted(false);
       }
     }
   };
@@ -244,21 +293,51 @@ export function ProfileComparison({
     <div className="w-full max-w-6xl mx-auto flex flex-col md:flex-row gap-4 lg:gap-6 relative py-4 min-h-[50vh] px-2">
       {/* Countdown Timer */}
       {showResults && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
+        <motion.div 
+          className="fixed top-4 left-1/2 z-50"
+          initial={{ y: -20, x: "-50%", opacity: 0 }}
+          animate={{ y: 0, x: "-50%", opacity: 1 }}
+          exit={{ y: -20, opacity: 0 }}
+        >
           <div className="bg-white rounded-full shadow-md px-4 py-2 border border-yellow-100">
             <div className="text-sm font-medium text-gray-700 flex items-center">
               <span>Next in </span>
-              <span className="inline-flex justify-center items-center bg-yellow-50 text-yellow-700 rounded-full w-7 h-7 font-bold mx-1">
+              <motion.span 
+                className="inline-flex justify-center items-center bg-yellow-50 text-yellow-700 rounded-full w-8 h-8 font-bold mx-1"
+                key={countdown}
+                initial={{ scale: 0.8, opacity: 0.5 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.3 }}
+              >
                 {countdown}
-              </span>
+              </motion.span>
             </div>
           </div>
-        </div>
+        </motion.div>
+      )}
+
+      {/* "Next Pair" button that appears after the countdown */}
+      {showResults && (
+        <motion.div 
+          className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50"
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.5 }}
+        >
+          <Button
+            onClick={handleNextClick}
+            className="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white rounded-full px-6 py-6 shadow-lg flex items-center gap-2"
+            size="lg"
+          >
+            Next Pair
+            <ChevronDown className="h-5 w-5" />
+          </Button>
+        </motion.div>
       )}
 
       {/* Left Profile */}
       <div
-        className={`flex-1 bg-white rounded-2xl p-5 sm:p-6 md:p-7 shadow-sm hover:shadow-lg transition-all duration-200 border cursor-pointer transform ${
+        className={`flex-1 bg-white rounded-2xl p-5 sm:p-6 md:p-7 shadow-sm hover:shadow-lg transition-all duration-200 border relative cursor-pointer transform ${
           showResults
             ? (prediction === leftProfileLocal.id 
                 ? (isCorrectPrediction() 
@@ -270,76 +349,122 @@ export function ProfileComparison({
                       : "border-red-300 shadow-lg")
                   : "border-gray-100")
             : "border-gray-100 hover:border-yellow-300 hover:scale-[1.01]"
-        } h-full`}
-        onClick={() => !showResults && handlePrediction(leftProfileLocal.id)}
+        } h-full overflow-hidden`}
+        onClick={() => !showResults && !hasVoted && handlePrediction(leftProfileLocal.id)}
       >
+        {/* Updated Emoji Rain for left profile - using the correct type */}
+        {leftEmojiType && (
+          <EmojiRain 
+            isActive={showEmojis} 
+            type={leftEmojiType} 
+            duration={5}
+          />
+        )}
+        
         {showResults && (prediction === leftProfileLocal.id || prediction === null) && (
           <div className="absolute top-4 right-4 z-10">
             {prediction === null 
               ? (isCorrectProfileForEqualPrediction(leftProfileLocal.id) ? (
-                  <div className="bg-green-100 text-green-700 rounded-full px-3 py-1 text-sm font-medium flex items-center">
+                  <motion.div 
+                    className="bg-green-100 text-green-700 rounded-full px-3 py-1 text-sm font-medium flex items-center"
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                  >
                     <CheckCircle2 className="w-4 h-4 mr-1" />
                     Correct!
-                  </div>
+                  </motion.div>
                 ) : (
-                  <div className="bg-red-100 text-red-700 rounded-full px-3 py-1 text-sm font-medium flex items-center">
+                  <motion.div 
+                    className="bg-red-100 text-red-700 rounded-full px-3 py-1 text-sm font-medium flex items-center"
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                  >
                     <XCircle className="w-4 h-4 mr-1" />
                     Wrong
-                  </div>
+                  </motion.div>
                 ))
               : (isCorrectPrediction() ? (
-                  <div className="bg-green-100 text-green-700 rounded-full px-3 py-1 text-sm font-medium flex items-center">
+                  <motion.div 
+                    className="bg-green-100 text-green-700 rounded-full px-3 py-1 text-sm font-medium flex items-center"
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                  >
                     <CheckCircle2 className="w-4 h-4 mr-1" />
                     Correct!
-                  </div>
+                  </motion.div>
                 ) : (
-                  <div className="bg-red-100 text-red-700 rounded-full px-3 py-1 text-sm font-medium flex items-center">
+                  <motion.div 
+                    className="bg-red-100 text-red-700 rounded-full px-3 py-1 text-sm font-medium flex items-center"
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                  >
                     <XCircle className="w-4 h-4 mr-1" />
                     Wrong
-                  </div>
+                  </motion.div>
                 ))
             }
           </div>
         )}
-        
+
         <ProfileDisplay 
           profile={leftProfileLocal} 
           showElo={showResults} 
-          eloChange={showResults ? eloChanges.left : 0} 
+          eloChange={showResults ? eloChanges.left : 0}
+          blurIdentity={!hasVoted && !showResults}
         />
       </div>
 
       {/* Center Voting Controls */}
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 hidden md:flex flex-col items-center">
+      <motion.div 
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 hidden md:flex flex-col items-center"
+        initial={{ scale: 0.9, opacity: 0.5 }}
+        animate={{ 
+          scale: hasVoted || showResults ? 0.9 : 1, 
+          opacity: hasVoted || showResults ? 0.5 : 1
+        }}
+        transition={{ duration: 0.3 }}
+      >
         <div className="bg-white rounded-full shadow-lg p-1">
           <Button
-            onClick={() => !showResults && handlePrediction(null)}
+            onClick={() => !showResults && !hasVoted && handlePrediction(null)}
             variant="ghost"
-            className="rounded-full h-12 w-12 lg:h-14 lg:w-14 font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-            disabled={showResults}
+            className="rounded-full h-14 w-14 lg:h-16 lg:w-16 text-base font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 disabled:opacity-50"
+            disabled={showResults || hasVoted}
           >
             Equal
           </Button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Mobile Voting Controls */}
-      <div className="flex md:hidden justify-center my-2">
+      <motion.div 
+        className="flex md:hidden justify-center my-2"
+        initial={{ scale: 0.9, opacity: 0.5 }}
+        animate={{ 
+          scale: hasVoted || showResults ? 0.9 : 1, 
+          opacity: hasVoted || showResults ? 0.5 : 1
+        }}
+        transition={{ duration: 0.3 }}
+      >
         <div className="bg-white rounded-full shadow-lg p-3 flex gap-4 items-center">
           <Button
-            onClick={() => !showResults && handlePrediction(null)}
+            onClick={() => !showResults && !hasVoted && handlePrediction(null)}
             variant="outline"
-            className="rounded-full px-3 py-1 text-sm font-medium text-gray-600"
-            disabled={showResults}
+            className="rounded-full px-4 py-2 text-sm font-medium text-gray-600 disabled:opacity-50"
+            disabled={showResults || hasVoted}
           >
             Equal
           </Button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Right Profile */}
       <div
-        className={`flex-1 bg-white rounded-2xl p-5 sm:p-6 md:p-7 shadow-sm hover:shadow-lg transition-all duration-200 border cursor-pointer transform ${
+        className={`flex-1 bg-white rounded-2xl p-5 sm:p-6 md:p-7 shadow-sm hover:shadow-lg transition-all duration-200 border relative cursor-pointer transform ${
           showResults
             ? (prediction === rightProfileLocal.id 
                 ? (isCorrectPrediction() 
@@ -351,86 +476,131 @@ export function ProfileComparison({
                       : "border-red-300 shadow-lg")
                   : "border-gray-100")
             : "border-gray-100 hover:border-yellow-300 hover:scale-[1.01]"
-        } h-full`}
-        onClick={() => !showResults && handlePrediction(rightProfileLocal.id)}
+        } h-full overflow-hidden`}
+        onClick={() => !showResults && !hasVoted && handlePrediction(rightProfileLocal.id)}
       >
+        {/* Updated Emoji Rain for right profile - using the correct type */}
+        {rightEmojiType && (
+          <EmojiRain 
+            isActive={showEmojis} 
+            type={rightEmojiType} 
+            duration={5}
+          />
+        )}
+        
         {showResults && (prediction === rightProfileLocal.id || prediction === null) && (
           <div className="absolute top-4 right-4 z-10">
             {prediction === null 
               ? (isCorrectProfileForEqualPrediction(rightProfileLocal.id) ? (
-                  <div className="bg-green-100 text-green-700 rounded-full px-3 py-1 text-sm font-medium flex items-center">
+                  <motion.div 
+                    className="bg-green-100 text-green-700 rounded-full px-3 py-1 text-sm font-medium flex items-center"
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                  >
                     <CheckCircle2 className="w-4 h-4 mr-1" />
                     Correct!
-                  </div>
+                  </motion.div>
                 ) : (
-                  <div className="bg-red-100 text-red-700 rounded-full px-3 py-1 text-sm font-medium flex items-center">
+                  <motion.div 
+                    className="bg-red-100 text-red-700 rounded-full px-3 py-1 text-sm font-medium flex items-center"
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                  >
                     <XCircle className="w-4 h-4 mr-1" />
                     Wrong
-                  </div>
+                  </motion.div>
                 ))
               : (isCorrectPrediction() ? (
-                  <div className="bg-green-100 text-green-700 rounded-full px-3 py-1 text-sm font-medium flex items-center">
+                  <motion.div 
+                    className="bg-green-100 text-green-700 rounded-full px-3 py-1 text-sm font-medium flex items-center"
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                  >
                     <CheckCircle2 className="w-4 h-4 mr-1" />
                     Correct!
-                  </div>
+                  </motion.div>
                 ) : (
-                  <div className="bg-red-100 text-red-700 rounded-full px-3 py-1 text-sm font-medium flex items-center">
+                  <motion.div 
+                    className="bg-red-100 text-red-700 rounded-full px-3 py-1 text-sm font-medium flex items-center"
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                  >
                     <XCircle className="w-4 h-4 mr-1" />
                     Wrong
-                  </div>
+                  </motion.div>
                 ))
             }
           </div>
         )}
-        
+
         <ProfileDisplay 
           profile={rightProfileLocal} 
           showElo={showResults} 
-          eloChange={showResults ? eloChanges.right : 0} 
+          eloChange={showResults ? eloChanges.right : 0}
+          blurIdentity={!hasVoted && !showResults}
         />
       </div>
     </div>
   )
 }
 
-function ProfileDisplay({ profile, showElo = false, eloChange = 0 }: { profile: ProfileType, showElo?: boolean, eloChange?: number }) {
-  console.log("ProfileDisplay - Education data:", { 
-    profile_id: profile.id,
-    education: profile.education,
-    has_education: profile.education && profile.education.length > 0,
-    education_count: profile.education ? profile.education.length : 0
-  });
-  
+function ProfileDisplay({ 
+  profile, 
+  showElo = false, 
+  eloChange = 0,
+  blurIdentity = false
+}: { 
+  profile: ProfileType, 
+  showElo?: boolean, 
+  eloChange?: number,
+  blurIdentity?: boolean
+}) {  
   // Check for LinkedIn URL in different potential properties
   const linkedinUrl = profile.linkedinUrl || (profile as any).linkedin_url;
-  
-  // Add debugging log to check LinkedIn URL availability
-  console.log("ProfileDisplay - LinkedIn data:", {
-    profile_id: profile.id,
-    name: profile.name,
-    linkedinUrl: profile.linkedinUrl,
-    linkedin_url: (profile as any).linkedin_url,
-    final_url: linkedinUrl,
-    raw_profile: profile
-  });
   
   return (
     <div className="space-y-7">
       {/* Profile Header */}
       <div className="flex flex-col items-center">
-        <Avatar className="h-24 w-24 sm:h-28 sm:w-28 bg-gradient-to-br from-indigo-400 to-purple-500 shadow-md mb-4">
-          {profile.profileImageUrl ? (
-            <img src={profile.profileImageUrl} alt={profile.name} className="h-full w-full object-cover" />
-          ) : (
-            <AvatarFallback className="text-xl sm:text-2xl text-white font-light">{profile.name.charAt(0)}</AvatarFallback>
-          )}
-        </Avatar>
+        {/* Blurred or regular avatar */}
+        <div className="relative">
+          <Avatar className="h-24 w-24 sm:h-28 sm:w-28 bg-gradient-to-br from-indigo-400 to-purple-500 shadow-md mb-4 relative">
+            {profile.profileImageUrl ? (
+              <img src={profile.profileImageUrl} alt={profile.name} className="h-full w-full object-cover" />
+            ) : (
+              <AvatarFallback className="text-xl sm:text-2xl text-white font-light">{profile.name.charAt(0)}</AvatarFallback>
+            )}
+            {blurIdentity && (
+              <div className="absolute inset-0 bg-gray-100/80 backdrop-blur-md rounded-full flex items-center justify-center">
+                <span className="text-xl sm:text-2xl text-gray-400 font-light">?</span>
+              </div>
+            )}
+          </Avatar>
+        </div>
         
-        <h3 className="text-xl sm:text-2xl md:text-3xl font-bold mb-1">{profile.name}</h3>
+        {/* Blurred or regular name */}
+        {blurIdentity ? (
+          <div className="h-8 w-40 bg-gray-200 rounded-lg mb-1 backdrop-blur-md relative overflow-hidden">
+            <div className="absolute inset-0 bg-gray-100/60 backdrop-blur-md"></div>
+          </div>
+        ) : (
+          <h3 className="text-xl sm:text-2xl md:text-3xl font-bold mb-1">{profile.name}</h3>
+        )}
+        
+        {/* Always show the title, even when identity is blurred */}
         {profile.title && <p className="text-gray-500 font-medium">{profile.title}</p>}
         
         {showElo && (
-          <div className="flex items-center justify-center mt-3">
+          <motion.div 
+            className="flex items-center justify-center mt-3"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
             <div className="bg-gray-50 py-1.5 px-4 rounded-full text-gray-800 text-base sm:text-lg font-medium shadow-sm">
               Elo: {profile.elo} 
               {eloChange !== 0 && (
@@ -449,11 +619,11 @@ function ProfileDisplay({ profile, showElo = false, eloChange = 0 }: { profile: 
                 </span>
               )}
             </div>
-          </div>
+          </motion.div>
         )}
       </div>
 
-      {/* Experience Section */}
+      {/* Experience Section - Always visible */}
       <div>
         <h3 className="text-lg font-bold mb-3 text-center border-b pb-2">Experience</h3>
         <div className="space-y-4">
@@ -484,7 +654,7 @@ function ProfileDisplay({ profile, showElo = false, eloChange = 0 }: { profile: 
         </div>
       </div>
 
-      {/* Education Section */}
+      {/* Education Section - Always visible */}
       <div>
         <h3 className="text-lg font-bold mb-3 text-center border-b pb-2">Education</h3>
         <div className="space-y-3">
@@ -541,10 +711,11 @@ function ProfileDisplay({ profile, showElo = false, eloChange = 0 }: { profile: 
                   </div>
                 </div>
               ))
-          }        </div>
+          }
+        </div>
       </div>
 
-      {/* Honors Section - Show if available */}
+      {/* Honors Section - Always visible if available */}
       {profile.achievements && profile.achievements.length > 0 && (
         <div>
           <h3 className="text-lg font-bold mb-3 text-center border-b pb-2">Honors</h3>
@@ -562,7 +733,7 @@ function ProfileDisplay({ profile, showElo = false, eloChange = 0 }: { profile: 
         </div>
       )}
 
-      {/* LinkedIn Button */}
+      {/* LinkedIn Button - Always visible */}
       <div className="pt-4">
         <a 
           href={linkedinUrl || '#'}
