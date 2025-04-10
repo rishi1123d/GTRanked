@@ -381,12 +381,11 @@ export async function GET(request: Request) {
         skills, // Now using skills from the database
         experiences, // Using the formatted experiences from both sources
         linkedinUrl: profile.linkedin_url || null, // Include LinkedIn URL if available
-        linkedin_url: profile.linkedin_url || null, // Also include the raw field name for debugging
         education: profile.education || [], // Include the full education array
       };
       
       // Log LinkedIn URL for debugging
-      console.log(`Profile ${profile.id} (${profile.full_name}) LinkedIn URL: ${profile.linkedin_url}`);
+      console.log(`Profile ${profile.id} (${profile.full_name}) LinkedIn URL: ${profile.linkedin_url || 'None'}`);
       
       return transformedProfile;
     });

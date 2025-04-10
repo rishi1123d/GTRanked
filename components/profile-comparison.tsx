@@ -559,8 +559,14 @@ function ProfileDisplay({
   eloChange?: number,
   blurIdentity?: boolean
 }) {  
-  // Check for LinkedIn URL in different potential properties
-  const linkedinUrl = profile.linkedinUrl || (profile as any).linkedin_url;
+  // Get LinkedIn URL from profile, handling various property name formats
+  const linkedinUrl = profile.linkedinUrl || 
+                     (profile as any).linkedin_url || 
+                     (profile as any).linkedinUrl || 
+                     '';
+  
+  // For debugging - remove in production
+  // console.log(`Profile ${profile.name} has LinkedIn URL: ${linkedinUrl || 'None'}`);
   
   return (
     <div className="space-y-7">
@@ -733,13 +739,17 @@ function ProfileDisplay({
         </div>
       )}
 
-      {/* LinkedIn Button - Always visible */}
+      {/* LinkedIn Button - Always visible but conditionally enabled */}
       <div className="pt-4">
         <a 
           href={linkedinUrl || '#'}
           target="_blank" 
           rel="noopener noreferrer"
-          className="group flex items-center justify-center gap-2 w-full py-3 px-4 bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 hover:from-blue-100 hover:to-blue-200 rounded-xl font-medium transition-all duration-300 shadow-sm hover:shadow-md transform hover:translate-y-[-2px]"
+          className={`group flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl font-medium transition-all duration-300 shadow-sm hover:shadow-md transform ${
+            linkedinUrl 
+              ? "bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 hover:from-blue-100 hover:to-blue-200 hover:translate-y-[-2px]" 
+              : "bg-gray-100 text-gray-400 cursor-not-allowed"
+          }`}
           onClick={(e) => {
             // Prevent navigation if no URL is available
             if (!linkedinUrl) {
@@ -748,8 +758,8 @@ function ProfileDisplay({
             }
           }}
         >
-          <Linkedin className="h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
-          View LinkedIn Profile
+          <Linkedin className={`h-5 w-5 ${linkedinUrl ? "text-blue-600" : "text-gray-400"}`} />
+          <span>View LinkedIn Profile</span>
         </a>
       </div>
     </div>
